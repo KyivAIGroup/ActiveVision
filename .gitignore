@@ -1,0 +1,13 @@
+# Pycharm
+.idea/
+
+# cache
+*.pyc
+
+# images
+*.jpg
+*.png
+
+# data
+*.txt
+*.csv
