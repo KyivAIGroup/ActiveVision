@@ -11,3 +11,6 @@
 # data
 *.txt
 *.csv
+*.pickle
+*.pkl
+*.gz

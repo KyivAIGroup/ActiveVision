@@ -1,103 +1,119 @@
-import load_mnist
+import matplotlib.pyplot as plt
 import numpy as np
 from nupic.bindings.algorithms import SpatialPooler as SP
-import matplotlib.pyplot as plt
-import sys
+from tqdm import trange, tqdm
+
+import load_mnist
 
 uintType = "uint32"
 
 
+# config
 load_number = 100
+inputDimensions = (28, 28)
+columnDimensions = (50, 50)
+num_training = 10
+
 images, labels = load_mnist.load_images(images_number=load_number)
-
 labels = labels.T[0]
-# images = images.reshape(load_number, -1)
-# images /= np.max(images, axis=1)[:, None]
-# images[images > 0.1] = 1
-# images[images < 0.1] = 0
-
-images_and_labels = list(zip(images, labels))
-
-# print np.count_nonzero(labels==2)
-# print images[labels==2].shape
-# sys.exit()
-
-inputDimensions = np.array((28,28))
-
-columnDimensions = (50,50)
+numActiveColumnsPerInhArea = int(0.02 * np.prod(columnDimensions)),
 
 sp = SP(inputDimensions,
         columnDimensions,
-        potentialRadius = int(0.1*inputDimensions.prod()),
-        numActiveColumnsPerInhArea = int(0.02*50*50),
+        potentialRadius = int(0.1*np.prod(inputDimensions)),
+        numActiveColumnsPerInhArea = numActiveColumnsPerInhArea,
         globalInhibition = True,
         synPermActiveInc = 0.01,
         synPermInactiveDec = 0.008,
         wrapAround=False,)
 
 
-lbl = 0
-num_training = 300
-SDR = np.zeros((num_training, 50,50) )
-
-# Learning from the same image
-activeArray = np.zeros((50,50), dtype=uintType)
-for k in range(num_training):
-    activeArray *= 0
-    sp.compute(images[lbl], True, activeArray)
-    SDR[k] = activeArray
-    print k
+def train(sp, images_train, learn=True):
+    activeArray = np.zeros(columnDimensions, dtype=uintType)
+    for iter_id in trange(num_training, desc="Training SP"):
+        for im_train in images_train:
+            sp.compute(im_train, learn, activeArray)
 
 
-overlap = np.array([[np.count_nonzero(SDR[j] * SDR[i]) for i in range(num_training)] for j in range(num_training)], dtype=int)
-
-plt.imshow(overlap)
-plt.colorbar()
-plt.show()
-
-
-fig = plt.figure()
-plt.subplot(221)
-plt.imshow(SDR[-1], cmap='gray_r')
-plt.subplot(223)
-plt.imshow(images[lbl], cmap='gray_r')
-plt.subplot(222)
-plt.imshow(SDR[-2], cmap='gray_r')
-plt.subplot(224)
-plt.imshow(images[lbl], cmap='gray_r')
-plt.show()
+def train_with_history(sp, images_train, learn=True):
+    activeArray = np.zeros(columnDimensions, dtype=uintType)
+    sdr_history = []
+    for iter_id in trange(num_training, desc="Training SP"):
+        for im_train in images_train:
+            sp.compute(im_train, learn, activeArray)
+            sdr_history.append(np.copy(activeArray))
+    return np.array(sdr_history, dtype=uintType)
 
 
-
-sys.exit()
-for i, image in enumerate(images[labels==lbl]):
-    activeArray *= 0
-    sp.compute(image, True, activeArray)
-    SDR[i] = activeArray
-
+def test(sp, images_test):
+    sdr_history = np.zeros((len(images_test), columnDimensions[0], columnDimensions[1]), dtype=uintType)
+    for im_id, im_test in enumerate(tqdm(images_test, desc="Testing SP")):
+        sp.compute(im_test, False, sdr_history[im_id])
+    return sdr_history
 
 
-print np.count_nonzero(SDR[0])
-print np.count_nonzero(SDR[1])
-print np.count_nonzero(SDR[0]*SDR[1])
+def compute_overlap(sdr_history, show=True):
+    overlap = []
+    for im_left in tqdm(sdr_history, desc="Computing overlap"):
+        for im_right in sdr_history:
+            overlap_pair = np.count_nonzero(np.logical_and(im_left, im_right))
+            overlap.append(overlap_pair)
+    sample_count = len(sdr_history)
+    overlap = np.reshape(overlap, (sample_count, sample_count))
+    np.fill_diagonal(overlap, 0)
 
-fig = plt.figure()
-plt.subplot(221)
-plt.imshow(SDR[0], cmap='gray_r')
-plt.subplot(223)
-plt.imshow(images[labels==lbl][0].reshape(28,28), cmap='gray_r')
-plt.subplot(222)
-plt.imshow(SDR[1], cmap='gray_r')
-plt.subplot(224)
-plt.imshow(images[labels==lbl][1].reshape(28,28), cmap='gray_r')
-plt.show()
+    if show:
+        print(overlap)
+        print(overlap.shape)
+        overlap_mean = np.mean(overlap)
+        print("Overlap mean: {:.2f} / {} ({:.2f} %)".format(overlap_mean, numActiveColumnsPerInhArea,
+                                                            100. * overlap_mean / numActiveColumnsPerInhArea))
+        plt.imshow(overlap)
+        plt.colorbar()
+        plt.show()
+
+    return overlap
 
 
+def learn_identical():
+    # Learning from the same image
+    same_image = images[0]  # just the first image
 
-# plt.imshow(activeArray)
-# plt.show()
-# print activeArray
-# print activeArray.nonzero()
+    sdr_history_train = train_with_history(sp, [same_image])
+    compute_overlap(sdr_history_train)
+
+    plt.figure()
+    plt.title("Learn identical")
+    plt.subplot(211)
+    plt.imshow(sdr_history_train[-1], cmap='gray_r')
+    plt.subplot(212)
+    plt.imshow(same_image, cmap='gray_r')
+    plt.show()
 
 
-# print labels, images
+def learn_mnist(label_of_interest=2, learn=True):
+    images_interest = images[labels == label_of_interest]
+    print(len(images_interest))
+    train(sp, images, learn=learn)
+
+    sdr_history_test = test(sp, images_interest)
+    print(sdr_history_test)
+    compute_overlap(sdr_history_test)
+
+    plt.figure()
+    plt.title("Learn MNIST")
+    plt.subplot(221)
+    plt.imshow(sdr_history_test[-1], cmap='gray_r')
+    plt.subplot(222)
+    plt.imshow(images_interest[-1], cmap='gray_r')
+    plt.subplot(223)
+    plt.imshow(sdr_history_test[-2], cmap='gray_r')
+    plt.subplot(224)
+    plt.imshow(images_interest[-2], cmap='gray_r')
+    plt.show()
+
+
+if __name__ == '__main__':
+    # learn_identical()
+    learn_mnist()
+    # learn_mnist(learn=False)

@@ -82,38 +82,3 @@ plt.imshow(SDR[-2], cmap='gray_r')
 plt.subplot(224)
 plt.imshow(images[labels == 1][-2], cmap='gray_r')
 plt.show()
-
-
-
-sys.exit()
-for i, image in enumerate(images[labels==lbl]):
-    activeArray *= 0
-    sp.compute(image, True, activeArray)
-    SDR[i] = activeArray
-
-
-
-print np.count_nonzero(SDR[0])
-print np.count_nonzero(SDR[1])
-print np.count_nonzero(SDR[0]*SDR[1])
-
-fig = plt.figure()
-plt.subplot(221)
-plt.imshow(SDR[0], cmap='gray_r')
-plt.subplot(223)
-plt.imshow(images[labels==lbl][0].reshape(28,28), cmap='gray_r')
-plt.subplot(222)
-plt.imshow(SDR[1], cmap='gray_r')
-plt.subplot(224)
-plt.imshow(images[labels==lbl][1].reshape(28,28), cmap='gray_r')
-plt.show()
-
-
-
-# plt.imshow(activeArray)
-# plt.show()
-# print activeArray
-# print activeArray.nonzero()
-
-
-# print labels, images
