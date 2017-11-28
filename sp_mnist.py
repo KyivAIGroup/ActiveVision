@@ -101,7 +101,7 @@ def learn_mnist(label_of_interest=2, learn=True):
     compute_overlap(sdr_history_test)
 
     plt.figure()
-    plt.title("Learn MNIST")
+    plt.title("Learn MNIST: {}".format(learn))
     plt.subplot(221)
     plt.imshow(sdr_history_test[-1], cmap='gray_r')
     plt.subplot(222)
