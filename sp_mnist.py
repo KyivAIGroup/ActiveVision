@@ -9,18 +9,18 @@ uintType = "uint32"
 
 
 # config
-load_number = 100
+load_number = 1000
 inputDimensions = (28, 28)
-columnDimensions = (50, 50)
-num_training = 10
+columnDimensions = (100, 100)
+num_training = 300
 
 images, labels = load_mnist.load_images(images_number=load_number)
 labels = labels.T[0]
-numActiveColumnsPerInhArea = int(0.02 * np.prod(columnDimensions)),
+numActiveColumnsPerInhArea = int(0.02 * np.prod(columnDimensions))
 
 sp = SP(inputDimensions,
         columnDimensions,
-        potentialRadius = int(0.1*np.prod(inputDimensions)),
+        potentialRadius = int(0.02*np.prod(inputDimensions)),
         numActiveColumnsPerInhArea = numActiveColumnsPerInhArea,
         globalInhibition = True,
         synPermActiveInc = 0.01,
@@ -60,7 +60,7 @@ def compute_overlap(sdr_history, show=True):
             overlap.append(overlap_pair)
     sample_count = len(sdr_history)
     overlap = np.reshape(overlap, (sample_count, sample_count))
-    np.fill_diagonal(overlap, 0)
+    # np.fill_diagonal(overlap, 0)
 
     if show:
         print(overlap)
@@ -75,42 +75,43 @@ def compute_overlap(sdr_history, show=True):
     return overlap
 
 
-def learn_identical():
+def learn_identical(show_example=False):
     # Learning from the same image
     same_image = images[0]  # just the first image
 
     sdr_history_train = train_with_history(sp, [same_image])
     compute_overlap(sdr_history_train)
 
-    plt.figure()
-    plt.title("Learn identical")
-    plt.subplot(211)
-    plt.imshow(sdr_history_train[-1], cmap='gray_r')
-    plt.subplot(212)
-    plt.imshow(same_image, cmap='gray_r')
-    plt.show()
+    if show_example:
+        plt.figure()
+        plt.title("Learn identical")
+        plt.subplot(211)
+        plt.imshow(sdr_history_train[-1], cmap='gray_r')
+        plt.subplot(212)
+        plt.imshow(same_image, cmap='gray_r')
+        plt.show()
 
 
-def learn_mnist(label_of_interest=2, learn=True):
+def learn_mnist(label_of_interest=2, learn=True, show_example=False):
     images_interest = images[labels == label_of_interest]
-    print(len(images_interest))
     train(sp, images, learn=learn)
 
     sdr_history_test = test(sp, images_interest)
     print(sdr_history_test)
     compute_overlap(sdr_history_test)
 
-    plt.figure()
-    plt.title("Learn MNIST: {}".format(learn))
-    plt.subplot(221)
-    plt.imshow(sdr_history_test[-1], cmap='gray_r')
-    plt.subplot(222)
-    plt.imshow(images_interest[-1], cmap='gray_r')
-    plt.subplot(223)
-    plt.imshow(sdr_history_test[-2], cmap='gray_r')
-    plt.subplot(224)
-    plt.imshow(images_interest[-2], cmap='gray_r')
-    plt.show()
+    if show_example:
+        plt.figure()
+        plt.title("Learn MNIST: {}".format(learn))
+        plt.subplot(221)
+        plt.imshow(sdr_history_test[-1], cmap='gray_r')
+        plt.subplot(222)
+        plt.imshow(images_interest[-1], cmap='gray_r')
+        plt.subplot(223)
+        plt.imshow(sdr_history_test[-2], cmap='gray_r')
+        plt.subplot(224)
+        plt.imshow(images_interest[-2], cmap='gray_r')
+        plt.show()
 
 
 if __name__ == '__main__':
