@@ -80,7 +80,9 @@ def load_images(images_number=100):
             pickle.dump(({'images': images,
                           'labels': labels}), handle)
         # print 'data_created'
-
+    labels = labels.T[0]
+    images = images.astype("uint32")
+    labels = labels.astype("uint32")
     return images, labels
 
 

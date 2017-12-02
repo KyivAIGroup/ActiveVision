@@ -14,3 +14,10 @@
 *.pickle
 *.pkl
 *.gz
+
+# where your ideas leave
+ignored/
+
+# nupic serialized
+*.cproto
+result/
