@@ -1,5 +1,6 @@
 import numpy as np
 import os
+from tqdm import trange
 
 
 class ScalarEncoder(object):
@@ -33,7 +34,7 @@ class ScalarEncoder(object):
         mask_active = np.random.choice(self.size, size=n_active_total, replace=False)
         self.sdr[0][mask_active] = 1
         dim_arange = np.arange(self.size)
-        for bin_id in range(1, self.bins):
+        for bin_id in trange(1, self.bins, desc="Generating ScalarEncoder SDR bins"):
             active_prev = np.nonzero(self.sdr[bin_id - 1])[0]
             active_stay = np.random.choice(active_prev, size=n_active_stay, replace=False)
             non_active = np.delete(dim_arange, active_prev)
@@ -49,6 +50,7 @@ class ScalarEncoder(object):
         :param scalar: float value in range [0, 1) 
         :return: sparse distributed representation vector of `scalar`
         """
+        assert 0 <= scalar < 1, "Unexpected value"
         bin_active = int(scalar * self.bins)
         return self.sdr[bin_active]
 
@@ -56,7 +58,7 @@ class ScalarEncoder(object):
 if __name__ == '__main__':
     encoder = ScalarEncoder()
     sdr1 = encoder.encode(0.47)
-    sdr2 = encoder.encode(0.5)
+    sdr2 = encoder.encode(0.48)
     overlap = np.count_nonzero(sdr1*sdr2)
     overlap_expected = int(encoder.bins * encoder.sparsity * encoder.similarity)
     print(sdr1.astype(int))

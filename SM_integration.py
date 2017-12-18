@@ -7,7 +7,12 @@
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
-from sdr_drom_flaot import ScalarEncoder
+from encoder import ScalarEncoder
+
+try:
+    from nupic.encoders.random_distributed_scalar import RandomDistributedScalarEncoder
+except ImportError:
+    from nupic_stub import EncoderStub as RandomDistributedScalarEncoder
 
 
 class World(object):
@@ -35,25 +40,27 @@ class Agent(object):
     def sense_data(self, world):
         x, y, z = self.position
         fov_w, fov_h = self.receptive_field_pixels
-        return world.image[y: y+fov_h, x: x+fov_w]
+        retina_image = world.image[y: y+fov_h, x: x+fov_w]
+        return retina_image
 
 
 class Area(object):
     def __init__(self):
         self.layers = {}
 
-    def add_layer(self, name, layer):
-        self.layers[name] = layer
+    def add_layer(self, layer):
+        self.layers[layer.name] = layer
 
 
 class Layer(object):
-    def __init__(self, shape):
+    def __init__(self, name, shape):
+        self.name = name
         self.cells = np.zeros(shape, dtype=np.int32)
         self.size = np.prod(shape)
         self.input_layers = []
         self.weights = []
         self.sparsity = 0.1
-        
+
         # association memory params
         self.cluster_size = 2
         self.clusters = 'tbd'
@@ -106,8 +113,8 @@ class Layer(object):
 
 
 class LocationLayer(Layer):
-    def __init__(self, max_amplitude):
-        super(LocationLayer, self).__init__(shape=(28, 28))
+    def __init__(self, name, max_amplitude):
+        super(LocationLayer, self).__init__(name, shape=0)
         self.max_amplitude = float(max_amplitude)
 
     @staticmethod
@@ -128,15 +135,16 @@ class Cortex(object):
     def __init__(self):
         self.V1 = Area()
 
-        self.V1.add_layer('L4', Layer(shape=100))
-        self.V1.add_layer('L23', Layer(shape=100))
-        self.V1.add_layer('motor_direction', Layer(shape=100))
-        self.V1.add_layer('motor_amplitude', Layer(shape=100))
+        self.V1.add_layer(Layer('L4', shape=100))
+        self.V1.add_layer(Layer('L23', shape=100))
+        self.V1.add_layer(Layer('motor_direction', shape=100))
+        self.V1.add_layer(Layer('motor_amplitude', shape=100))
 
-        self.V1.add_layer('saliency', LocationLayer(max_amplitude=30))
-        self.retina = Layer(shape=(28, 28))
+        self.V1.add_layer(LocationLayer('saliency', max_amplitude=28*np.sqrt(2)))
+        self.retina = Layer('retina', shape=(28, 28))
 
-        self.scalar_encoder = ScalarEncoder(size=100)
+        self.scalar_encoder = ScalarEncoder(size=100, sparsity=0.1, bins=100, similarity=0.8)
+        # self.scalar_encoder = RandomDistributedScalarEncoder(resolution=0.01, w=11, n=100)
 
         self.V1.layers['L4'].connect_input(self.retina)
 
@@ -201,12 +209,10 @@ if __name__ == '__main__':
     flat_mnist_world.add_image(images[0], position=(10, 10))
 
     poppy = Agent()
-
-    poppy_init_position = np.copy(poppy.position)
     poppy.cortex.retina.cells = poppy.sense_data(flat_mnist_world)
 
     for i in range(7):
         poppy.cortex.compute()
 
-        plt.imshow(poppy.cortex.saliency_map(poppy.sense_data(flat_mnist_world)))
-        plt.show()
+        # plt.imshow(poppy.cortex.saliency_map(poppy.sense_data(flat_mnist_world)))
+        # plt.show()
