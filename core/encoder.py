@@ -39,7 +39,7 @@ class ScalarEncoder(object):
         mask_active = np.random.choice(self.size, size=n_active_total, replace=False)
         self.sdr[0][mask_active] = 1
         dim_arange = np.arange(self.size)
-        for bin_id in trange(1, self.bins, desc="Generating ScalarEncoder SDR bins"):
+        for bin_id in trange(1, len(self.sdr), desc="Generating ScalarEncoder SDR bins"):
             active_prev = np.nonzero(self.sdr[bin_id - 1])[0]
             active_stay = np.random.choice(active_prev, size=n_active_stay, replace=False)
             non_active = np.delete(dim_arange, active_prev)
