@@ -32,7 +32,7 @@ class ScalarEncoder(object):
         self.sdr = np.load(self.data_path)
 
     def generate_sdr(self):
-        self.sdr = np.zeros((self.bins+1, self.size), dtype=bool)  # handle upper value 1.0
+        self.sdr = np.zeros((self.bins+1, self.size), dtype=bool)  # 1 more bin to handle upper value 1.0
         n_active_total = max(int(self.size * self.sparsity), 1)
         n_active_stay = int(n_active_total * self.similarity)
         n_active_new = n_active_total - n_active_stay
