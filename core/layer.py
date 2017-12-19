@@ -71,30 +71,61 @@ class Layer(object):
         return sdr
 
 
-class SaliencyRegion(object):
+class SaliencyMap(object):
+
+    def __init__(self):
+        self.corners_xy = []
+        self.curr_id = -1
+        self.max_corners_init = 7
+        self.max_corners = self.max_corners_init
+        self.min_dist_relative_init = 0.05
+        self.min_dist_relative = self.min_dist_relative_init
+        self.min_dist_reduce = 0.8
+        self.image_input = None
+
+    def init_world(self, world_image):
+        self.reset()
+        self.image_input = np.copy(world_image)
+
+    def compute(self):
+        assert self.image_input is not None, "Init the world first"
+        min_dist = np.linalg.norm(self.image_input.shape[:2]) * self.min_dist_relative
+        self.corners_xy = cv2.goodFeaturesToTrack(self.image_input, maxCorners=self.max_corners,
+                                                  qualityLevel=0.05, minDistance=min_dist)
+        self.corners_xy = np.squeeze(self.corners_xy, axis=1)
+        self.display()
+
+    def display(self):
+        image_with_corners = cv2.cvtColor(self.image_input, cv2.COLOR_GRAY2BGR)
+        for x, y in self.corners_xy:
+            cv2.circle(image_with_corners, (x, y), 1, (255, 0, 0), -1)
+        image_with_corners = cv2.resize(image_with_corners, (700, 700))
+        cv2.imshow("Corners", image_with_corners)
 
     @staticmethod
-    def get_saliency_map(image):
+    def get_sobel(image):
         image = image.astype(np.uint8)
-        result = np.absolute(cv2.Sobel(image, cv2.CV_64F, 1, 0, ksize=3)) + np.abs(
-            cv2.Sobel(image, cv2.CV_64F, 0, 1, ksize=3))
-        result = result / (np.max(result) + 1e-7)
-        thresh = result > 0.5
-        return result * thresh
+        gx = cv2.Sobel(image, cv2.CV_64F, dx=1, dy=0, ksize=3)
+        gy = cv2.Sobel(image, cv2.CV_64F, dx=0, dy=1, ksize=3)
+        grad_ampl = np.sqrt(gx ** 2 + gy ** 2)
+        grad_ampl *= 255 / (np.max(grad_ampl) + 1e-7)
+        grad_ampl = grad_ampl.astype(np.uint8)
+        return grad_ampl
 
     def __iter__(self):
         return self
 
-    def next(self):
-        # todo implement
-        return np.random.randint(low=-10, high=10, size=2)
+    def reset(self):
+        self.max_corners = self.max_corners_init
+        self.min_dist_relative = self.min_dist_relative_init
+        self.image_input = None
 
-    @staticmethod
-    def get_vector_from_saliency(saliency_map):
-        x_c, y_c = int(saliency_map.shape[0] / 2), int(saliency_map.shape[1] / 2)
-        saliency_map[x_c - 5:x_c + 5, y_c - 5:y_c + 5] = 0
-        x, y = np.unravel_index(saliency_map.argmax(), saliency_map.shape)
-        plt.imshow(saliency_map)
-        plt.show()
-        print x, y
-        return x - x_c, y - y_c
+    def next(self):
+        self.curr_id += 1
+        if self.curr_id >= len(self.corners_xy):
+            # We haven't looked enough. Look more carefully
+            self.min_dist_relative *= self.min_dist_reduce
+            self.max_corners += 1
+            self.compute()
+            self.curr_id = 0
+        return self.corners_xy[self.curr_id]
