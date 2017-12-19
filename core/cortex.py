@@ -25,8 +25,8 @@ class Cortex(object):
         self.V1.layers['L23'].connect_input(self.V1.layers['motor_amplitude'])
 
     def compute(self, retina_image, vector):
-        vector = vector[:2]  # ignore z for now
         cv2.imshow("Retina", cv2.resize(retina_image, (300, 300)))
+        vector = vector[:2]  # ignore z for now
         self.retina.cells = retina_image
         self.V1.layers['L4'].linear_update()
         self.V1.layers['L23'].linear_update()

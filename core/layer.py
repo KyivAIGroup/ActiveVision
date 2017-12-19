@@ -86,6 +86,7 @@ class SaliencyMap(object):
     def init_world(self, world_image):
         self.reset()
         self.image_input = np.copy(world_image)
+        self.compute()
 
     def compute(self):
         assert self.image_input is not None, "Init the world first"
@@ -116,6 +117,8 @@ class SaliencyMap(object):
         return self
 
     def reset(self):
+        self.corners_xy = []
+        self.curr_id = -1
         self.max_corners = self.max_corners_init
         self.min_dist_relative = self.min_dist_relative_init
         self.image_input = None

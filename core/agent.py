@@ -21,7 +21,6 @@ class Agent(object):
         self.saliency_map.init_world(world.image)
 
     def sense_data(self, world):
-        self.saliency_map.compute()
         fov_w, fov_h = self.receptive_field_pixels
         new_position = next(self.saliency_map)
         self.position[:2] = new_position
