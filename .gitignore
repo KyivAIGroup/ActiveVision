@@ -9,5 +9,20 @@
 *.png
 
 # data
+data/
 *.txt
 *.csv
+*.pickle
+*.pkl
+*.gz
+
+# where your ideas leave
+ignored/
+
+# nupic serialized
+*.cproto
+result/
+
+# virtualenv
+env/
+venv/
