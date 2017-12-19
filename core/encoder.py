@@ -2,6 +2,11 @@ import numpy as np
 import os
 from tqdm import trange
 
+try:
+    from nupic.encoders.random_distributed_scalar import RandomDistributedScalarEncoder
+except ImportError:
+    from nupic_stub import EncoderStub as RandomDistributedScalarEncoder
+
 
 class ScalarEncoder(object):
     def __init__(self, size=100, sparsity=0.1, bins=100, similarity=0.8):
