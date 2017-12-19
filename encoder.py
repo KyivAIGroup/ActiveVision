@@ -27,7 +27,7 @@ class ScalarEncoder(object):
         self.sdr = np.load(self.data_path)
 
     def generate_sdr(self):
-        self.sdr = np.zeros((self.bins, self.size), dtype=bool)
+        self.sdr = np.zeros((self.bins+1, self.size), dtype=bool)  # handle upper value 1.0
         n_active_total = max(int(self.size * self.sparsity), 1)
         n_active_stay = int(n_active_total * self.similarity)
         n_active_new = n_active_total - n_active_stay
@@ -47,12 +47,33 @@ class ScalarEncoder(object):
 
     def encode(self, scalar):
         """
-        :param scalar: float value in range [0, 1) 
+        :param scalar: float value in range [0, 1]
         :return: sparse distributed representation vector of `scalar`
         """
-        assert 0 <= scalar < 1, "Unexpected value"
+        assert 0 <= scalar <= 1, "Illegal value: {}".format(scalar)
         bin_active = int(scalar * self.bins)
         return self.sdr[bin_active]
+
+
+class LocationEncoder(object):
+    def __init__(self, max_amplitude):
+        self.max_amplitude = float(max_amplitude)
+        self.scalar_encoder = ScalarEncoder(size=100, sparsity=0.1, bins=100, similarity=0.8)
+        # self.scalar_encoder = RandomDistributedScalarEncoder(resolution=0.01, w=11, n=100)
+
+    def encode_amplitude(self, vector):
+        ampl = np.linalg.norm(vector)
+        ampl = ampl / self.max_amplitude
+        ampl_encoded = self.scalar_encoder.encode(ampl)
+        return ampl_encoded
+
+    def encode_phase(self, vector):
+        x, y = vector
+        phase = np.arctan2(y, x)
+        # transform [-pi, pi] --> [0, 1]
+        phase = (phase / np.pi + 1.) / 2.
+        phase_encoded = self.scalar_encoder.encode(phase)
+        return phase_encoded
 
 
 if __name__ == '__main__':

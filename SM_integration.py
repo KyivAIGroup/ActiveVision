@@ -7,7 +7,7 @@
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
-from encoder import ScalarEncoder
+from encoder import LocationEncoder
 
 try:
     from nupic.encoders.random_distributed_scalar import RandomDistributedScalarEncoder
@@ -17,8 +17,9 @@ except ImportError:
 
 class World(object):
     def __init__(self):
-        self.size_pixels = (100, 100)
-        self.image = np.zeros(self.size_pixels, dtype=np.uint8)
+        self.width_px = 100
+        self.height_px = 100
+        self.image = np.zeros((self.height_px, self.width_px), dtype=np.uint8)
 
     def add_image(self, new_image, position):
         # new_image is a two dimensional array
@@ -30,6 +31,8 @@ class World(object):
 class Agent(object):
     def __init__(self):
         self.cortex = Cortex()
+        self.saliency_region = SaliencyRegion()
+
         self.receptive_field_angle_xy = (30, 30)  # in degrees
         # x,y,z. XY plane of an image.
         # do not change z for now, it adjusted with self.visual_field_angle to give 28x28 patch of visual input
@@ -38,10 +41,15 @@ class Agent(object):
         self.receptive_field_pixels = (2 * self.position[2] * np.tan(np.deg2rad(self.receptive_field_angle_xy))).astype(int)
 
     def sense_data(self, world):
-        x, y, z = self.position
         fov_w, fov_h = self.receptive_field_pixels
-        retina_image = world.image[y: y+fov_h, x: x+fov_w]
-        return retina_image
+        vector = next(self.saliency_region)
+        self.position[:2] += vector
+        x, y, z = self.position
+        x = np.clip(x, a_min=fov_w // 2, a_max=world.width_px - fov_w // 2)
+        y = np.clip(y, a_min=fov_h // 2, a_max=world.height_px - fov_h // 2)
+        self.position[:2] = (x, y)
+        retina_image = world.image[y-fov_h//2: y+fov_h//2, x-fov_w//2: x+fov_w//2]
+        self.cortex.compute(retina_image, vector)
 
 
 class Area(object):
@@ -112,54 +120,26 @@ class Layer(object):
         return sdr
 
 
-class LocationLayer(Layer):
-    def __init__(self, name, max_amplitude):
-        super(LocationLayer, self).__init__(name, shape=0)
-        self.max_amplitude = float(max_amplitude)
+class SaliencyRegion(object):
 
     @staticmethod
-    def get_phase(vector):
-        x, y = vector
-        phase = np.arctan2(y, x)
-        # transform [-pi, pi] --> [0, 1]
-        phase = (phase / np.pi + 1.) / 2.
-        return phase
-
-    def get_amplitude(self, vector):
-        ampl = np.linalg.norm(vector)
-        ampl = ampl / self.max_amplitude
-        return ampl
-
-
-class Cortex(object):
-    def __init__(self):
-        self.V1 = Area()
-
-        self.V1.add_layer(Layer('L4', shape=100))
-        self.V1.add_layer(Layer('L23', shape=100))
-        self.V1.add_layer(Layer('motor_direction', shape=100))
-        self.V1.add_layer(Layer('motor_amplitude', shape=100))
-
-        self.V1.add_layer(LocationLayer('saliency', max_amplitude=28*np.sqrt(2)))
-        self.retina = Layer('retina', shape=(28, 28))
-
-        self.scalar_encoder = ScalarEncoder(size=100, sparsity=0.1, bins=100, similarity=0.8)
-        # self.scalar_encoder = RandomDistributedScalarEncoder(resolution=0.01, w=11, n=100)
-
-        self.V1.layers['L4'].connect_input(self.retina)
-
-        self.V1.layers['L23'].connect_input(self.V1.layers['L4'])
-        self.V1.layers['L23'].connect_input(self.V1.layers['motor_direction'])
-        self.V1.layers['L23'].connect_input(self.V1.layers['motor_amplitude'])
-
-    def saliency_map(self, image):
+    def get_saliency_map(image):
         image = image.astype(np.uint8)
-        result = np.absolute(cv2.Sobel(image, cv2.CV_64F, 1, 0, ksize=3)) + np.abs(cv2.Sobel(image, cv2.CV_64F, 0, 1, ksize=3))
+        result = np.absolute(cv2.Sobel(image, cv2.CV_64F, 1, 0, ksize=3)) + np.abs(
+            cv2.Sobel(image, cv2.CV_64F, 0, 1, ksize=3))
         result = result / (np.max(result) + 1e-7)
         thresh = result > 0.5
         return result * thresh
 
-    def get_vector_from_saliency(self, saliency_map):
+    def __iter__(self):
+        return self
+
+    def next(self):
+        # todo implement
+        return np.random.randint(low=-10, high=10, size=2)
+
+    @staticmethod
+    def get_vector_from_saliency(saliency_map):
         x_c, y_c = int(saliency_map.shape[0] / 2), int(saliency_map.shape[1] / 2)
         saliency_map[x_c - 5:x_c + 5, y_c - 5:y_c + 5] = 0
         x, y = np.unravel_index(saliency_map.argmax(), saliency_map.shape)
@@ -168,35 +148,37 @@ class Cortex(object):
         print x, y
         return x - x_c, y - y_c
 
-    @staticmethod
-    def get_phase_amplitude(vector):
-        x, y = vector
-        phase = np.arctan2(y, x)
-        phase = phase / np.pi + 1
-        ampl = np.linalg.norm(vector)
-        return phase, ampl
 
-    def saccade(self):
-        saliency_map = self.saliency_map(self.retina.cells)
-        vector = self.get_vector_from_saliency(saliency_map)
+class Cortex(object):
+    def __init__(self, sdr_size=100):
+        self.V1 = Area()
 
-        # this is one of the output of the brain
-        poppy.position[:2] += vector  # rewrite somehow to exclude explicit name of the agent
-        self.retina.cells = poppy.sense_data(flat_mnist_world)
+        self.V1.add_layer(Layer('L4', shape=sdr_size))
+        self.V1.add_layer(Layer('L23', shape=sdr_size))
+        self.V1.add_layer(Layer('motor_direction', shape=sdr_size))
+        self.V1.add_layer(Layer('motor_amplitude', shape=sdr_size))
 
-        phase = self.V1.layers['saliency'].get_phase(vector)
-        amplitude = self.V1.layers['saliency'].get_amplitude(vector)
-        self.V1.layers['motor_direction'] = self.scalar_encoder.encode(phase)
-        self.V1.layers['motor_amplitude'] = self.scalar_encoder.encode(amplitude)
+        self.location_encoder = LocationEncoder(max_amplitude=28 * np.sqrt(2))
+        self.retina = Layer('retina', shape=(28, 28))
 
-    def compute(self):
+        self.V1.layers['L4'].connect_input(self.retina)
+
+        self.V1.layers['L23'].connect_input(self.V1.layers['L4'])
+        self.V1.layers['L23'].connect_input(self.V1.layers['motor_direction'])
+        self.V1.layers['L23'].connect_input(self.V1.layers['motor_amplitude'])
+
+    def compute(self, retina_image, vector):
+        plt.imshow(retina_image)
+        plt.show()
+        self.retina.cells = retina_image
         self.V1.layers['L4'].linear_update()
         self.V1.layers['L23'].linear_update()
 
+        self.V1.layers['motor_direction'] = self.location_encoder.encode_phase(vector)
+        self.V1.layers['motor_amplitude'] = self.location_encoder.encode_amplitude(vector)
+
         # todo: associate
         # self.V1.layers['L23'].associate([self.V1.layers['L4'], self.V1.layers['motor_amplitude'], self.V1.layers['motor_direction']])
-
-        self.saccade()
 
 
 if __name__ == '__main__':
@@ -209,10 +191,5 @@ if __name__ == '__main__':
     flat_mnist_world.add_image(images[0], position=(10, 10))
 
     poppy = Agent()
-    poppy.cortex.retina.cells = poppy.sense_data(flat_mnist_world)
-
     for i in range(7):
-        poppy.cortex.compute()
-
-        # plt.imshow(poppy.cortex.saliency_map(poppy.sense_data(flat_mnist_world)))
-        # plt.show()
+        poppy.sense_data(flat_mnist_world)
