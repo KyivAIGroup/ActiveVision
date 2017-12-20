@@ -99,19 +99,9 @@ class SaliencyMap(object):
     def display(self):
         image_with_corners = cv2.cvtColor(self.image_input, cv2.COLOR_GRAY2BGR)
         for x, y in self.corners_xy:
-            cv2.circle(image_with_corners, (x, y), 1, (255, 0, 0), -1)
+            cv2.circle(image_with_corners, (x, y), radius=1, color=(255, 0, 0), thickness=-1)
         image_with_corners = cv2.resize(image_with_corners, (700, 700))
         cv2.imshow("Corners", image_with_corners)
-
-    @staticmethod
-    def get_sobel(image):
-        image = image.astype(np.uint8)
-        gx = cv2.Sobel(image, cv2.CV_64F, dx=1, dy=0, ksize=3)
-        gy = cv2.Sobel(image, cv2.CV_64F, dx=0, dy=1, ksize=3)
-        grad_ampl = np.sqrt(gx ** 2 + gy ** 2)
-        grad_ampl *= 255 / (np.max(grad_ampl) + 1e-7)
-        grad_ampl = grad_ampl.astype(np.uint8)
-        return grad_ampl
 
     def __iter__(self):
         return self
