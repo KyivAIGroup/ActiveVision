@@ -1,0 +1,4 @@
+numpy>=1.13.3
+tqdm>=4.19.4
+mnist>=0.2.1
+# nupic
