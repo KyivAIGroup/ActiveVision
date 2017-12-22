@@ -11,6 +11,31 @@ class Area(object):
         self.layers[layer.name] = layer
 
 
+class Connection(object):
+    def __init__(self, layer_left, layer_right):
+        layer_left.connection = self
+        layer_right.connection = self
+        self.patterns = {
+            layer_left: [],
+            layer_right: []
+        }
+
+    def add(self):
+        for layer, patterns in self.patterns.items():
+            patterns.append(layer.cells.copy())
+
+    def extract_paired(self, layer):
+        history = np.array(self.patterns[layer])
+        overlap = history.dot(layer.cells)
+        winner = np.argmax(overlap)
+        other_layer = None
+        for l in self.patterns:
+            if l is not layer:
+                other_layer = l
+                break
+        return self.patterns[other_layer][winner]
+
+
 class Layer(object):
     def __init__(self, name, shape):
         self.name = name
@@ -21,6 +46,7 @@ class Layer(object):
         self.weights_lateral = np.zeros((self.size, self.size), dtype=np.float32)
         self.associated = {}
         self.sparsity = 0.1
+        self.connection = None
 
         # association memory params
         self.cluster_size = 2
@@ -69,6 +95,11 @@ class Layer(object):
             }
         self.associate_from_to(self, other)
         self.associate_from_to(other, self)
+
+    def associate_as_matrix(self, other):
+        if self.connection is None:
+            self.connection = Connection(self, other)
+        self.connection.add()
 
     def display(self, winname=None):
         if winname is None:
