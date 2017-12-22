@@ -18,6 +18,8 @@ class Layer(object):
         self.size = np.prod(shape)
         self.input_layers = []
         self.weights = []
+        self.weights_lateral = np.zeros((self.size, self.size), dtype=np.float32)
+        self.associated = {}
         self.sparsity = 0.1
 
         # association memory params
@@ -34,34 +36,60 @@ class Layer(object):
             signal += np.dot(self.weights[layer_id], layer.cells.flatten())
         self.cells = self.k_winners_take_all(signal, self.sparsity)
 
-    def associate(self, input_layers=[]):
-        return 0
-        if len(input_layers) == 1:
-            input = input_layers[0].cells
-        if len(input_layers) > 1:
-            input = np.zeros(shape=0, dtype=int)
-            for layer in input_layers:
-                input = np.append(input, layer.cells)
-        # clusters - 3d matrix that stored synapse membership to clusters
-        probability = 0.1
-        self.cluster_size = 2
-        if np.count_nonzero(input):
-            for i in np.nonzero(self.cells)[0]:
-                # I will create clusters not whithin all active cells but just with part
-                if np.random.rand() < probability:
-                    # self.clusters[i] is a matrix, where return array of indices [(rows), (cols)]
-                    overlap = np.intersect1d(np.where(self.clusters[i] == 0)[0], np.nonzero(input)[0])
-                    # overlap show which synapses have free clusters to which I can write
-                    # select cluster_size active pre neurons
-                    if overlap.size >= self.cluster_size:
-                        pre = np.random.choice(overlap, self.cluster_size, replace=False)
-                        pre_tree = []
-                        for k in range(self.cluster_size):
-                            # this is to select free cluster among all synapses pairs
-                            pre_tree.append(np.random.choice(np.where(self.clusters[i, pre[k]] == 0)[0]))
-                        self.clusters[i, pre, pre_tree] = np.max(self.clusters[i]) + 1  # max +1 is number of cluster
-                    else:
-                        print 'full'
+    def choose_n_active(self, n):
+        active = np.where(self.cells)[0]
+        return np.random.choice(active, size=n, replace=False)
+
+    @staticmethod
+    def associate_from_to(self, other):
+        for cell_active in np.where(self.cells)[0]:
+            for cell_root in self.associated[other.name]["self"]:
+                if cell_active != cell_root:
+                    self.weights_lateral[cell_root, cell_active] += 1
+                    self.weights_lateral[cell_active, cell_root] += 1
+
+    def random_activation(self):
+        active = np.random.choice(self.size, size=int(self.sparsity * self.size), replace=False)
+        sdr = np.zeros(self.cells.shape, dtype=self.cells.dtype)
+        sdr.ravel()[active] = 1
+        self.cells = sdr
+
+    def associate(self, other):
+        if other.name not in self.associated:
+            assert self.name not in other.associated, "Association has to be undirected"
+            cells_self = self.choose_n_active(3)
+            cells_other = other.choose_n_active(3)
+            self.associated[other.name] = {
+                "self": cells_self,
+                "other": cells_other
+            }
+            other.associated[self.name] = {
+                "self": cells_other,
+                "other": cells_self
+            }
+        self.associate_from_to(self, other)
+        self.associate_from_to(other, self)
+
+    def display(self, winname=None):
+        if winname is None:
+            winname = self.name
+        map_size = int(np.ceil(np.sqrt(self.size)))
+        activation_map = np.zeros((map_size, map_size), dtype=np.uint8)
+        v = activation_map.ravel()
+        v[:self.size] = self.cells * 255
+        activation_map = cv2.resize(activation_map, (300, 300))
+        cv2.imshow(winname, activation_map)
+
+    def test_associated(self, input_layer):
+        depolarized_cells = np.zeros(self.cells.shape, dtype=np.float32)
+        for cell_root in self.associated[input_layer.name]["self"]:
+            cell_weights = self.weights_lateral[cell_root]
+            depolarize_ids = np.where(cell_weights)[0]
+            depolarize_ids = np.argsort(depolarize_ids, kind="mergesort")[::-1]
+            depolarize_ids = depolarize_ids[: min(4, len(depolarize_ids))]
+            depolarized_cells[depolarize_ids] += 0.5
+        self.cells = (depolarized_cells > 0.75).astype(np.int32)
+        self.display(winname="{} associated with {}".format(self.name, input_layer.name))
 
     def k_winners_take_all(self, activations, sparsity):
         n_active = max(int(sparsity * len(activations)), 1)

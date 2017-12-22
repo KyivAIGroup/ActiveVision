@@ -32,6 +32,36 @@ class Cortex(object):
         retina_image_show = cv2.resize(retina_image_show, (300, 300))
         cv2.imshow("Retina", retina_image_show)
 
+    def associate(self):
+        self.V1.layers['L4'].display()
+        self.V1.layers['motor_direction'].display()
+
+        # trial 1
+        self.V1.layers['L4'].associate(self.V1.layers['motor_direction'])
+        clone_l4 = self.V1.layers['L4'].cells.copy()
+        clone_direction = self.V1.layers['motor_direction'].cells.copy()
+
+        # random activations
+        self.V1.layers['L4'].random_activation()
+        self.V1.layers['motor_direction'].random_activation()
+        self.V1.layers['L4'].associate(self.V1.layers['motor_direction'])
+        self.V1.layers['L4'].associate(self.V1.layers['motor_direction'])
+
+        self.V1.layers['L4'].test_associated(self.V1.layers['motor_direction'])
+
+        # trial 2-3
+        self.V1.layers['L4'].cells = clone_l4
+        self.V1.layers['motor_direction'].cells = clone_direction
+        self.V1.layers['L4'].associate(self.V1.layers['motor_direction'])
+        self.V1.layers['L4'].associate(self.V1.layers['motor_direction'])
+
+        self.V1.layers['L4'].test_associated(self.V1.layers['motor_direction'])
+
+    def experiment(self):
+        self.V1.layers['L4'].display()
+        self.V1.layers['L4'].random_activation()
+        self.V1.layers['L4'].display()
+
     def compute(self, retina_image, vector):
         self.display_retina(retina_image, vector)
         vector = vector[:2]  # ignore z for now
@@ -39,8 +69,6 @@ class Cortex(object):
         self.V1.layers['L4'].linear_update()
         self.V1.layers['L23'].linear_update()
 
-        self.V1.layers['motor_direction'] = self.location_encoder.encode_phase(vector)
-        self.V1.layers['motor_amplitude'] = self.location_encoder.encode_amplitude(vector)
-
-        # todo: associate
-        # self.V1.layers['L23'].associate([self.V1.layers['L4'], self.V1.layers['motor_amplitude'], self.V1.layers['motor_direction']])
+        self.V1.layers['motor_direction'].cells = self.location_encoder.encode_phase(vector)
+        self.V1.layers['motor_amplitude'].cells = self.location_encoder.encode_amplitude(vector)
+        self.experiment()

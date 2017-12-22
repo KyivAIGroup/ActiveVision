@@ -57,7 +57,7 @@ class ScalarEncoder(object):
         """
         assert 0 <= scalar <= 1, "Illegal value: {}".format(scalar)
         bin_active = int(scalar * self.bins)
-        return self.sdr[bin_active]
+        return self.sdr[bin_active].astype(np.int32)
 
 
 class LocationEncoder(object):
