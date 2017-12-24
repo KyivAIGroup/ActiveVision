@@ -3,6 +3,7 @@
 
 import cv2
 import load_mnist
+from tqdm import tqdm
 
 from core.world import World
 from core.agent import Agent
@@ -10,24 +11,58 @@ from core.agent import Agent
 # todo: 17.12.17 Add activation based on clusters 2. Think how to generate second output for classification
 
 
-if __name__ == '__main__':
-    load_number = 100
-    images, labels = load_mnist.load_images(images_number=load_number)
+def cv2_step():
+    key = cv2.waitKey(0) & 0xFF
+    if key == ord('q'):
+        cv2.destroyAllWindows()
+        quit()
 
-    images_5 = images[labels == 5]
-    images_6 = images[labels == 6]
 
-    flat_mnist_world = World()
-    flat_mnist_world.add_image(images[0], position=(10, 10))
-    flat_mnist_world.label = 5
+def run(world, agent, train=True, images_number=1000):
+    images, labels = load_mnist.load_images(images_number, train)
+    correct = 0
+    total = 0
+    for digit in (5, 6):
+        images_digit = images[labels == digit]
+        total += len(images_digit)
+        for im in tqdm(images_digit, "Processing digit={}, learn={}".format(digit, train)):
+            world.add_image(im, position=(10, 10))
+            agent.init_world(world)
+            for saccade in range(7):
+                agent.sense_data(world)
+                if train:
+                    agent.cortex.associate(digit)
+            if not train:
+                label_predicted = agent.cortex.predict()
+                correct += label_predicted == digit
+    if not train:
+        accuracy = float(correct) / total
+        print("Accuracy: {}".format(accuracy))
 
+
+def train_test():
+    world = World()
     poppy = Agent()
-    poppy.init_world(flat_mnist_world)
+    run(world, poppy, train=True)
+    run(world, poppy, train=False)
+
+
+def one_image(label_interest=5):
+    images, labels = load_mnist.load_images(images_number=100)
+
+    world = World()
+    poppy = Agent()
+
+    image_interest = images[labels == label_interest][0]
+    world.add_image(image_interest, position=(10, 10))
+    poppy.init_world(world)
+
     while True:
-        poppy.sense_data(flat_mnist_world)
+        poppy.sense_data(world)
+        poppy.cortex.associate(label=label_interest)
         poppy.cortex.label_layer.display()
-        poppy.cortex.associate(5)
-        key = cv2.waitKey(0) & 0xFF
-        if key == ord('q'):
-            cv2.destroyAllWindows()
-            break
+        cv2_step()
+
+
+if __name__ == '__main__':
+    one_image()

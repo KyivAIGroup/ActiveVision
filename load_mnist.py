@@ -6,6 +6,8 @@ import pickle
 
 def _get_saved_path(images_number, train, data_dir):
     fold = "train" if train else "test"
+    if images_number is None:
+        images_number = 'all'
     fpath = os.path.join(data_dir, "digits_{}_{}.pkl".format(fold, images_number))
     return fpath
 
@@ -18,8 +20,11 @@ def _download_images(images_number, train, file_path):
     else:
         images = mnist.test_images()
         labels = mnist.test_labels()
-    images = images[:images_number].astype(np.uint8)
-    labels = labels[:images_number].astype(np.int32)
+    if images_number is not None:
+        images = images[:images_number]
+        labels = labels[:images_number]
+    images = images.astype(np.uint8)
+    labels = labels.astype(np.int32)
     data_dir = os.path.dirname(file_path)
     if not os.path.exists(data_dir):
         os.makedirs(data_dir)
@@ -28,6 +33,12 @@ def _download_images(images_number, train, file_path):
 
 
 def load_images(images_number, train=True, data_dir="data"):
+    """
+    :param images_number: int, how many to load. Pass `None` to load all images.
+    :param train: bool, train or test
+    :param data_dir: directory to store cached pickled files
+    :return: MNIST images, labels
+    """
     fpath = _get_saved_path(images_number, train, data_dir)
     if not os.path.exists(fpath):
         _download_images(images_number, train, fpath)

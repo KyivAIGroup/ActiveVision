@@ -19,7 +19,7 @@ class AssociationMemory(object):
         }
 
     def remember_activations(self, layer_paired):
-        layer_paired.connection = self
+        layer_paired.memory = self
         if layer_paired not in self.patterns:
             self.patterns[layer_paired] = []
         for connected_layer, activations in self.patterns.items():
@@ -56,7 +56,7 @@ class Layer(object):
         signal = np.zeros(self.cells.shape, dtype=np.float32)
         for layer_id, layer in enumerate(self.input_layers):
             signal += np.dot(self.weights[layer_id], layer.cells.flatten())
-        self.cells = self.k_winners_take_all(signal, self.sparsity)
+        self.cells = self.k_winners_take_all(signal)
 
     def choose_n_active(self, n):
         active = np.where(self.cells)[0]
@@ -84,8 +84,8 @@ class Layer(object):
         activation_map = cv2.resize(activation_map, (300, 300))
         cv2.imshow(winname, activation_map)
 
-    def k_winners_take_all(self, activations, sparsity):
-        n_active = max(int(sparsity * len(activations)), 1)
+    def k_winners_take_all(self, activations):
+        n_active = max(int(self.sparsity * len(activations)), 1)
         winners = np.argsort(activations)[-n_active:]
         sdr = np.zeros(activations.shape, dtype=self.cells.dtype)
         sdr[winners] = 1
@@ -106,6 +106,11 @@ class LabelLayer(Layer, IntEncoder):
     def predict(self):
         label_predicted = self.decode(self.cells)
         return label_predicted
+
+    def display(self, winname=None):
+        if winname is None:
+            winname = "{} {}".format(self.name, self.predict())
+        super(LabelLayer, self).display(winname)
 
 
 class SaliencyMap(object):
@@ -131,7 +136,6 @@ class SaliencyMap(object):
         self.corners_xy = cv2.goodFeaturesToTrack(self.image_input, maxCorners=self.max_corners,
                                                   qualityLevel=0.05, minDistance=min_dist)
         self.corners_xy = np.squeeze(self.corners_xy, axis=1)
-        self.display()
 
     def display(self):
         image_with_corners = cv2.cvtColor(self.image_input, cv2.COLOR_GRAY2BGR)
