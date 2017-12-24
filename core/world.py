@@ -1,11 +1,18 @@
 import numpy as np
 
 
+class LabeledImage(object):
+    def __init__(self, image, label):
+        self.image = image.copy()
+        self.label = label
+
+
 class World(object):
     def __init__(self):
         self.width_px = 100
         self.height_px = 100
         self.image = np.zeros((self.height_px, self.width_px), dtype=np.uint8)
+        label = -1
 
     def add_image(self, new_image, position):
         # new_image is a two dimensional array

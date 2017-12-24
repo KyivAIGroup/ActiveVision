@@ -1,6 +1,7 @@
 import numpy as np
 import cv2
-import matplotlib.pyplot as plt
+
+from core.encoder import IntEncoder
 
 
 class Area(object):
@@ -11,29 +12,24 @@ class Area(object):
         self.layers[layer.name] = layer
 
 
-class Connection(object):
-    def __init__(self, layer_left, layer_right):
-        layer_left.connection = self
-        layer_right.connection = self
+class AssociationMemory(object):
+    def __init__(self, layer):
         self.patterns = {
-            layer_left: [],
-            layer_right: []
+            layer: []
         }
 
-    def add(self):
-        for layer, patterns in self.patterns.items():
-            patterns.append(layer.cells.copy())
+    def remember_activations(self, layer_paired):
+        layer_paired.connection = self
+        if layer_paired not in self.patterns:
+            self.patterns[layer_paired] = []
+        for connected_layer, activations in self.patterns.items():
+            activations.append(connected_layer.cells.copy())
 
-    def extract_paired(self, layer):
-        history = np.array(self.patterns[layer])
-        overlap = history.dot(layer.cells)
+    def recall(self, layer_from, layer_to):
+        history = np.array(self.patterns[layer_from])
+        overlap = history.dot(layer_from.cells)
         winner = np.argmax(overlap)
-        other_layer = None
-        for l in self.patterns:
-            if l is not layer:
-                other_layer = l
-                break
-        return self.patterns[other_layer][winner]
+        return self.patterns[layer_to][winner]
 
 
 class Layer(object):
@@ -46,7 +42,7 @@ class Layer(object):
         self.weights_lateral = np.zeros((self.size, self.size), dtype=np.float32)
         self.associated = {}
         self.sparsity = 0.1
-        self.connection = None
+        self.memory = AssociationMemory(self)
 
         # association memory params
         self.cluster_size = 2
@@ -66,14 +62,6 @@ class Layer(object):
         active = np.where(self.cells)[0]
         return np.random.choice(active, size=n, replace=False)
 
-    @staticmethod
-    def associate_from_to(self, other):
-        for cell_active in np.where(self.cells)[0]:
-            for cell_root in self.associated[other.name]["self"]:
-                if cell_active != cell_root:
-                    self.weights_lateral[cell_root, cell_active] += 1
-                    self.weights_lateral[cell_active, cell_root] += 1
-
     def random_activation(self):
         active = np.random.choice(self.size, size=int(self.sparsity * self.size), replace=False)
         sdr = np.zeros(self.cells.shape, dtype=self.cells.dtype)
@@ -81,25 +69,10 @@ class Layer(object):
         self.cells = sdr
 
     def associate(self, other):
-        if other.name not in self.associated:
-            assert self.name not in other.associated, "Association has to be undirected"
-            cells_self = self.choose_n_active(3)
-            cells_other = other.choose_n_active(3)
-            self.associated[other.name] = {
-                "self": cells_self,
-                "other": cells_other
-            }
-            other.associated[self.name] = {
-                "self": cells_other,
-                "other": cells_self
-            }
-        self.associate_from_to(self, other)
-        self.associate_from_to(other, self)
+        self.memory.remember_activations(other)
 
-    def associate_as_matrix(self, other):
-        if self.connection is None:
-            self.connection = Connection(self, other)
-        self.connection.add()
+    def recall(self, other):
+        self.cells = self.memory.recall(other, self)
 
     def display(self, winname=None):
         if winname is None:
@@ -111,23 +84,28 @@ class Layer(object):
         activation_map = cv2.resize(activation_map, (300, 300))
         cv2.imshow(winname, activation_map)
 
-    def test_associated(self, input_layer):
-        depolarized_cells = np.zeros(self.cells.shape, dtype=np.float32)
-        for cell_root in self.associated[input_layer.name]["self"]:
-            cell_weights = self.weights_lateral[cell_root]
-            depolarize_ids = np.where(cell_weights)[0]
-            depolarize_ids = np.argsort(depolarize_ids, kind="mergesort")[::-1]
-            depolarize_ids = depolarize_ids[: min(4, len(depolarize_ids))]
-            depolarized_cells[depolarize_ids] += 0.5
-        self.cells = (depolarized_cells > 0.75).astype(np.int32)
-        self.display(winname="{} associated with {}".format(self.name, input_layer.name))
-
     def k_winners_take_all(self, activations, sparsity):
         n_active = max(int(sparsity * len(activations)), 1)
         winners = np.argsort(activations)[-n_active:]
         sdr = np.zeros(activations.shape, dtype=self.cells.dtype)
         sdr[winners] = 1
         return sdr
+
+
+class LabelLayer(Layer, IntEncoder):
+
+    def __init__(self, name, shape):
+        Layer.__init__(self, name, shape)
+        IntEncoder.__init__(self, size=shape, sparsity=0.1, bins=9, similarity=0.8)
+
+    def encode(self, scalar):
+        label_sdr = super(LabelLayer, self).encode(scalar)
+        self.cells = label_sdr
+        return label_sdr
+
+    def predict(self):
+        label_predicted = self.decode(self.cells)
+        return label_predicted
 
 
 class SaliencyMap(object):

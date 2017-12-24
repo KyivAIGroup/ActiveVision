@@ -14,13 +14,19 @@ if __name__ == '__main__':
     load_number = 100
     images, labels = load_mnist.load_images(images_number=load_number)
 
+    images_5 = images[labels == 5]
+    images_6 = images[labels == 6]
+
     flat_mnist_world = World()
     flat_mnist_world.add_image(images[0], position=(10, 10))
+    flat_mnist_world.label = 5
 
     poppy = Agent()
     poppy.init_world(flat_mnist_world)
     while True:
         poppy.sense_data(flat_mnist_world)
+        poppy.cortex.label_layer.display()
+        poppy.cortex.associate(5)
         key = cv2.waitKey(0) & 0xFF
         if key == ord('q'):
             cv2.destroyAllWindows()

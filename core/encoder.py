@@ -22,10 +22,10 @@ class ScalarEncoder(object):
         self.bins = bins
         self.similarity = similarity
 
-        data_dir = "data"
-        self.data_path = "size={}_sparse={}_bins={}_similar={}.npy".format(size, sparsity, bins, similarity)
+        data_dir = os.path.join("data", "encoder", type(self).__name__)
         if not os.path.exists(data_dir):
             os.makedirs(data_dir)
+        self.data_path = "size={}_sparse={}_bins={}_similar={}.npy".format(size, sparsity, bins, similarity)
         self.data_path = os.path.join(data_dir, self.data_path)
         if not os.path.exists(self.data_path):
             self.generate_sdr()
@@ -50,20 +50,79 @@ class ScalarEncoder(object):
             assert len(np.nonzero(sdr_bin)[0]) == n_active_total
         np.save(self.data_path, self.sdr)
 
+    def _to_bin(self, scalar):
+        """
+        :param scalar: input value
+        :return: corresponding SDR bin index
+        """
+        raise NotImplementedError("Implement in subclass")
+
+    def _to_scalar(self, bin_index):
+        """
+        :param bin_index: SDR bin index
+        :return: corresponding scalar
+        """
+        raise NotImplementedError("Implement in subclass")
+
     def encode(self, scalar):
         """
-        :param scalar: float value in range [0, 1]
+        :param scalar: input value
         :return: sparse distributed representation vector of `scalar`
         """
-        assert 0 <= scalar <= 1, "Illegal value: {}".format(scalar)
-        bin_active = int(scalar * self.bins)
+        bin_active = self._to_bin(scalar)
         return self.sdr[bin_active].astype(np.int32)
+
+    def decode(self, sdr):
+        """
+        :param sdr: input sdr, encoded as a scalar
+        :return: decoded scalar value (best fit)
+        """
+        score_table = self.sdr.dot(sdr)
+        bin_matched = np.argmax(score_table)
+        return self._to_scalar(bin_matched)
+
+
+class FloatEncoder(ScalarEncoder):
+
+    def _to_bin(self, scalar):
+        """
+        :param scalar: float value in range [0, 1]
+        :return: corresponding SDR bin index
+        """
+        assert 0 <= scalar <= 1, "Illegal value: {}".format(scalar)
+        return int(scalar * self.bins)
+
+    def _to_scalar(self, bin_index):
+        """
+        :param bin_index: SDR bin index
+        :return: corresponding scalar
+        """
+        return float(bin_index) / self.bins
+
+
+class IntEncoder(ScalarEncoder):
+
+    def _to_bin(self, scalar):
+        """
+        :param scalar: int value in range [0, #bins]
+        :return: corresponding SDR bin index
+        """
+        assert isinstance(scalar, int)
+        assert 0 <= scalar <= self.bins, "Illegal value: {}".format(scalar)
+        return scalar
+
+    def _to_scalar(self, bin_index):
+        """
+        :param bin_index: SDR bin index
+        :return: corresponding scalar
+        """
+        return bin_index
 
 
 class LocationEncoder(object):
     def __init__(self, max_amplitude):
         self.max_amplitude = float(max_amplitude)
-        self.scalar_encoder = ScalarEncoder(size=100, sparsity=0.1, bins=100, similarity=0.8)
+        self.scalar_encoder = FloatEncoder(size=100, sparsity=0.1, bins=100, similarity=0.8)
         # self.scalar_encoder = RandomDistributedScalarEncoder(resolution=0.01, w=11, n=100)
 
     def encode_amplitude(self, vector):
@@ -82,7 +141,7 @@ class LocationEncoder(object):
 
 
 if __name__ == '__main__':
-    encoder = ScalarEncoder()
+    encoder = FloatEncoder()
     sdr1 = encoder.encode(0.47)
     sdr2 = encoder.encode(0.48)
     overlap = np.count_nonzero(sdr1*sdr2)

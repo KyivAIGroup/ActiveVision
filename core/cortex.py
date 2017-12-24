@@ -1,12 +1,12 @@
 import numpy as np
 import cv2
 
-from core.layer import Area, Layer
-from core.encoder import LocationEncoder
+from core.layer import Area, Layer, LabelLayer
+from core.encoder import LocationEncoder, IntEncoder
 
 
 class Cortex(object):
-    def __init__(self, sdr_size=100):
+    def __init__(self, sdr_size=100, with_motor_cortex=True):
         self.V1 = Area()
 
         self.V1.add_layer(Layer('L4', shape=sdr_size))
@@ -15,13 +15,15 @@ class Cortex(object):
         self.V1.add_layer(Layer('motor_amplitude', shape=sdr_size))
 
         self.location_encoder = LocationEncoder(max_amplitude=28 * np.sqrt(2))
+        self.label_layer = LabelLayer(name="label", shape=100)
         self.retina = Layer('retina', shape=(28, 28))
 
         self.V1.layers['L4'].connect_input(self.retina)
 
         self.V1.layers['L23'].connect_input(self.V1.layers['L4'])
-        self.V1.layers['L23'].connect_input(self.V1.layers['motor_direction'])
-        self.V1.layers['L23'].connect_input(self.V1.layers['motor_amplitude'])
+        if with_motor_cortex:
+            self.V1.layers['L23'].connect_input(self.V1.layers['motor_direction'])
+            self.V1.layers['L23'].connect_input(self.V1.layers['motor_amplitude'])
 
     @staticmethod
     def display_retina(retina_image, vector):
@@ -32,36 +34,6 @@ class Cortex(object):
         retina_image_show = cv2.resize(retina_image_show, (300, 300))
         cv2.imshow("Retina", retina_image_show)
 
-    def associate(self):
-        self.V1.layers['L4'].display()
-        self.V1.layers['motor_direction'].display()
-
-        # trial 1
-        self.V1.layers['L4'].associate(self.V1.layers['motor_direction'])
-        clone_l4 = self.V1.layers['L4'].cells.copy()
-        clone_direction = self.V1.layers['motor_direction'].cells.copy()
-
-        # random activations
-        self.V1.layers['L4'].random_activation()
-        self.V1.layers['motor_direction'].random_activation()
-        self.V1.layers['L4'].associate(self.V1.layers['motor_direction'])
-        self.V1.layers['L4'].associate(self.V1.layers['motor_direction'])
-
-        self.V1.layers['L4'].test_associated(self.V1.layers['motor_direction'])
-
-        # trial 2-3
-        self.V1.layers['L4'].cells = clone_l4
-        self.V1.layers['motor_direction'].cells = clone_direction
-        self.V1.layers['L4'].associate(self.V1.layers['motor_direction'])
-        self.V1.layers['L4'].associate(self.V1.layers['motor_direction'])
-
-        self.V1.layers['L4'].test_associated(self.V1.layers['motor_direction'])
-
-    def experiment(self):
-        self.V1.layers['L4'].display()
-        self.V1.layers['L4'].random_activation()
-        self.V1.layers['L4'].display()
-
     def compute(self, retina_image, vector):
         self.display_retina(retina_image, vector)
         vector = vector[:2]  # ignore z for now
@@ -71,4 +43,12 @@ class Cortex(object):
 
         self.V1.layers['motor_direction'].cells = self.location_encoder.encode_phase(vector)
         self.V1.layers['motor_amplitude'].cells = self.location_encoder.encode_amplitude(vector)
-        self.experiment()
+
+    def associate(self, label):
+        self.label_layer.encode(scalar=label)
+        self.V1.layers['L23'].associate(self.label_layer)
+
+    def predict(self):
+        self.label_layer.recall(self.V1.layers['L23'])
+        label_predicted = self.label_layer.predict()
+        return label_predicted
