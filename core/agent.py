@@ -23,8 +23,7 @@ class Agent(object):
     def sense_data(self, world):
         fov_w, fov_h = self.receptive_field_pixels
         new_position = next(self.saliency_map)
-        self.position[:2] = new_position
-        x, y, z = self.position
+        x, y, z = new_position
         x = np.clip(x, a_min=fov_w // 2, a_max=world.width_px - fov_w // 2)
         y = np.clip(y, a_min=fov_h // 2, a_max=world.height_px - fov_h // 2)
         self.position[:2] = (x, y)

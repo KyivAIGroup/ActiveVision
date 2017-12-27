@@ -2,6 +2,7 @@
 # L23 integrates L4 and L5, visual feature in context of movement
 
 import cv2
+import numpy as np
 import load_mnist
 from tqdm import tqdm
 
@@ -64,5 +65,31 @@ def one_image(label_interest=5):
         cv2_step()
 
 
+def test_translate(label_interest=5, display=False):
+    images, labels = load_mnist.load_images(images_number=1000)
+    poppy = Agent()
+    overlaps = []
+    translation_x = np.array([[1, 0, 1], [0, 1, 0]], dtype=np.float32)
+    for im in tqdm(images[labels == label_interest], desc="Translation test"):
+        h, w = im.shape[:2]
+        im_translated = cv2.warpAffine(im, translation_x, (w, h))
+        l4_sdr = []
+        for img_try, title in zip((im, im_translated), ("Orig", "Translated")):
+            poppy.cortex.compute(img_try, vector=(0, 0, 0))
+            if display:
+                poppy.cortex.V1.layers['L4'].display(winname=title)
+            sdr = poppy.cortex.V1.layers['L4'].cells
+            l4_sdr.append(sdr)
+        if display:
+            im_diff = np.abs(im.astype(np.int32) - im_translated.astype(np.int32)).astype(np.uint8)
+            cv2.imshow("Translated diff", im_diff)
+            cv2_step()
+        assert sum(l4_sdr[0]) == sum(l4_sdr[1])
+        overlap = sum(np.logical_and(l4_sdr[0], l4_sdr[1]))
+        overlap /= float(sum(l4_sdr[0]))
+        overlaps.append(overlap)
+    print("Overlap mean={:.4f} std={:.4f}".format(np.mean(overlaps), np.std(overlaps)))
+
+
 if __name__ == '__main__':
-    one_image()
+    test_translate(display=False)
