@@ -2,6 +2,8 @@ import numpy as np
 import os
 from tqdm import trange
 
+from constants import DATA_DIR
+
 try:
     from nupic.encoders.random_distributed_scalar import RandomDistributedScalarEncoder
 except ImportError:
@@ -22,7 +24,7 @@ class ScalarEncoder(object):
         self.bins = bins
         self.similarity = similarity
 
-        data_dir = os.path.join("data", "encoder", type(self).__name__)
+        data_dir = os.path.join(DATA_DIR, "encoder", type(self).__name__)
         if not os.path.exists(data_dir):
             os.makedirs(data_dir)
         self.data_path = "size={}_sparse={}_bins={}_similar={}.npy".format(size, sparsity, bins, similarity)
@@ -39,7 +41,7 @@ class ScalarEncoder(object):
         mask_active = np.random.choice(self.size, size=n_active_total, replace=False)
         self.sdr[0][mask_active] = 1
         dim_arange = np.arange(self.size)
-        for bin_id in trange(1, len(self.sdr), desc="Generating ScalarEncoder SDR bins"):
+        for bin_id in trange(1, len(self.sdr), desc="Generating {} SDR bins".format(type(self).__name__)):
             active_prev = np.nonzero(self.sdr[bin_id - 1])[0]
             active_stay = np.random.choice(active_prev, size=n_active_stay, replace=False)
             non_active = np.delete(dim_arange, active_prev)

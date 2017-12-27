@@ -34,8 +34,10 @@ class Cortex(object):
         retina_image_show = cv2.resize(retina_image_show, (300, 300))
         cv2.imshow("Retina", retina_image_show)
 
-    def compute(self, retina_image, vector):
-        self.display_retina(retina_image, vector)
+    def compute(self, retina_image, vector, display=False):
+        # todo: cut image to fit retina
+        if display:
+            self.display_retina(retina_image, vector)
         vector = vector[:2]  # ignore z for now
         self.retina.cells = retina_image
         self.V1.layers['L4'].linear_update()

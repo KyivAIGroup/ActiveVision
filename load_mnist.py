@@ -3,6 +3,8 @@ import mnist
 import numpy as np
 import pickle
 
+from constants import DATA_DIR
+
 
 def _get_saved_path(images_number, train, data_dir):
     fold = "train" if train else "test"
@@ -32,11 +34,11 @@ def _download_images(images_number, train, file_path):
         pickle.dump((images, labels), f)
 
 
-def load_images(images_number, train=True, data_dir="data"):
+def load_images(images_number, train=True, data_dir=DATA_DIR):
     """
     :param images_number: int, how many to load. Pass `None` to load all images.
     :param train: bool, train or test
-    :param data_dir: directory to store cached pickled files
+    :param data_dir: str, directory to store cached pickled files
     :return: MNIST images, labels
     """
     fpath = _get_saved_path(images_number, train, data_dir)
