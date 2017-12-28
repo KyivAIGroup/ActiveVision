@@ -14,8 +14,8 @@ class Cortex(object):
         self.V1.add_layer(Layer('motor_direction', shape=sdr_size))
         self.V1.add_layer(Layer('motor_amplitude', shape=sdr_size))
 
-        self.location_encoder = LocationEncoder(max_amplitude=28 * np.sqrt(2))
-        self.label_layer = LabelLayer(name="label", shape=100)
+        self.location_encoder = LocationEncoder(max_amplitude=28 * np.sqrt(2), shape=sdr_size)
+        self.label_layer = LabelLayer(name="label", shape=sdr_size)
         self.retina = Layer('retina', shape=(28, 28))
 
         self.V1.layers['L4'].connect_input(self.retina)

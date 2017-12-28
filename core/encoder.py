@@ -122,9 +122,9 @@ class IntEncoder(ScalarEncoder):
 
 
 class LocationEncoder(object):
-    def __init__(self, max_amplitude):
+    def __init__(self, max_amplitude, shape):
         self.max_amplitude = float(max_amplitude)
-        self.scalar_encoder = FloatEncoder(size=100, sparsity=0.1, bins=100, similarity=0.8)
+        self.scalar_encoder = FloatEncoder(size=shape, sparsity=0.1, bins=100, similarity=0.8)
         # self.scalar_encoder = RandomDistributedScalarEncoder(resolution=0.01, w=11, n=100)
 
     def encode_amplitude(self, vector):

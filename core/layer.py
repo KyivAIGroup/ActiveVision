@@ -39,7 +39,6 @@ class Layer(object):
         self.size = np.prod(shape)
         self.input_layers = []
         self.weights = []
-        self.weights_lateral = np.zeros((self.size, self.size), dtype=np.float32)
         self.associated = {}
         self.sparsity = 0.1
         self.memory = AssociationMemory(self)
