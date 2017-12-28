@@ -62,8 +62,11 @@ class Layer(object):
         active = np.where(self.cells)[0]
         return np.random.choice(active, size=n, replace=False)
 
+    def get_sparse_bits_count(self):
+        return int(self.sparsity * self.size)
+
     def random_activation(self):
-        active = np.random.choice(self.size, size=int(self.sparsity * self.size), replace=False)
+        active = np.random.choice(self.size, size=self.get_sparse_bits_count(), replace=False)
         sdr = np.zeros(self.cells.shape, dtype=self.cells.dtype)
         sdr.ravel()[active] = 1
         self.cells = sdr

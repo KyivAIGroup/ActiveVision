@@ -18,12 +18,13 @@ def compute_translation_overlap(cortex, retina_img, translation_matrix, layer='L
             cortex.V1.layers[layer].display(winname=title)
         sdr = cortex.V1.layers[layer].cells.copy()
         sdrs.append(sdr)
-    n_bits_active = sum(sdrs[0])
+    n_bits_active = cortex.V1.layers[layer].get_sparse_bits_count()
+    assert sum(sdrs[0]) == sum(sdrs[1]) == n_bits_active
     overlap = np.dot(sdrs[0], sdrs[1]) / float(n_bits_active)
     return overlap
 
 
-def test_translate(label_interest=5, display=False):
+def test_translate_display(label_interest=5, display=True):
     images, labels = load_mnist.load_images(images_number=1000)
     cortex = Cortex()
     overlaps = []
@@ -53,11 +54,39 @@ def test_translate_plot(max_dist=5, layer='L4'):
     plt.plot(np.arange(len(overlaps)), overlaps, label="retina {}".format(cortex.retina.cells.shape))
     plt.xlabel("Translation distance, px")
     plt.ylabel("Overlap with origin image")
-    plt.title("{} SDR stability due to image translation".format(layer))
+    plt.title("{} SDR stability test: image translation".format(layer))
     plt.legend()
     plt.grid()
+    plt.savefig("translation.png")
+    plt.show()
+
+
+def test_inner_examples(layer='L4'):
+    images, labels = load_mnist.load_images(images_number=1000)
+    cortex = Cortex()
+    examples_sdr = [[] for digit in range(10)]
+    for img, label in zip(tqdm(images, desc="Testing different examples of the same image"), labels):
+        cortex.compute(img, vector=(0, 0, 0))
+        sdr = cortex.V1.layers[layer].cells.copy()
+        examples_sdr[label].append(sdr)
+    overlap_mean = []
+    overlap_std = []
+    n_bits_active = cortex.V1.layers[layer].get_sparse_bits_count()
+    for label, sdrs_label in enumerate(examples_sdr):
+        pairwise = np.dot(sdrs_label, np.transpose(sdrs_label)) / float(n_bits_active)
+        pairwise_idx = np.triu_indices_from(pairwise, k=1)
+        overlaps_label = pairwise[pairwise_idx]
+        overlap_mean.append(np.mean(overlaps_label))
+        overlap_std.append(np.std(overlaps_label))
+    plt.bar(np.arange(10), overlap_mean, yerr=overlap_std)
+    plt.xticks(np.arange(10))
+    plt.xlabel("Label")
+    plt.ylabel("Overlap")
+    plt.title("{} SDR stability test: inner-examples overlap of the same digit".format(layer))
+    plt.savefig("inner-examples.png")
     plt.show()
 
 
 if __name__ == '__main__':
     test_translate_plot()
+    test_inner_examples()
