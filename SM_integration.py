@@ -54,7 +54,7 @@ def one_image(label_interest=5):
     while True:
         poppy.sense_data(world)
         poppy.cortex.associate(label=label_interest)
-        poppy.cortex.label_layer.display()
+        # poppy.cortex.label_layer.display()
         cv2_step()
 
 

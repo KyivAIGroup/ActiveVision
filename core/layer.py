@@ -137,7 +137,7 @@ class SaliencyMap(object):
         min_dist = np.linalg.norm(self.image_input.shape[:2]) * self.min_dist_relative
         self.corners_xy = cv2.goodFeaturesToTrack(self.image_input, maxCorners=self.max_corners,
                                                   qualityLevel=0.05, minDistance=min_dist)
-        self.corners_xy = np.squeeze(self.corners_xy, axis=1)
+        self.corners_xy = np.squeeze(self.corners_xy, axis=1).astype(np.int32)
 
     def display(self):
         image_with_corners = cv2.cvtColor(self.image_input, cv2.COLOR_GRAY2BGR)
