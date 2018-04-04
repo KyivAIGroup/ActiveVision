@@ -21,7 +21,6 @@ def run(world, agent, train=True, images_number=1000):
         total += len(images_digit)
         for im in tqdm(images_digit, "Processing digit={}, learn={}".format(digit, train)):
             world.add_image(im, position=(10, 10))
-            agent.init_world(world)
             for saccade in range(7):
                 agent.sense_data(world)
                 if train:
@@ -49,7 +48,6 @@ def one_image(label_interest=5):
 
     image_interest = images[labels == label_interest][0]
     world.add_image(image_interest, position=(10, 10))
-    poppy.init_world(world)
 
     while True:
         poppy.sense_data(world)

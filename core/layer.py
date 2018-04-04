@@ -117,12 +117,13 @@ class LabelLayer(Layer, IntEncoder):
 
 class SaliencyMap(object):
 
+    max_corners_init = 7
+    min_dist_relative_init = 0.05
+
     def __init__(self):
         self.corners_xy = []
         self.curr_id = -1
-        self.max_corners_init = 7
         self.max_corners = self.max_corners_init
-        self.min_dist_relative_init = 0.05
         self.min_dist_relative = self.min_dist_relative_init
         self.min_dist_reduce = 0.8
         self.image_input = None
