@@ -6,10 +6,12 @@ from core.encoder import LocationEncoder, IntEncoder
 
 
 class Cortex(object):
-    def __init__(self, sdr_size=100, with_motor_cortex=True):
+    def __init__(self, sdr_size=100):
         self.V1 = Area()
 
         self.V1.add_layer(Layer('L4', shape=sdr_size))
+        self.V1.add_layer(Layer('L4_history', shape=sdr_size))
+
         self.V1.add_layer(Layer('L23', shape=sdr_size))
         self.V1.add_layer(Layer('motor_direction', shape=sdr_size))
         self.V1.add_layer(Layer('motor_amplitude', shape=sdr_size))
@@ -21,9 +23,11 @@ class Cortex(object):
         self.V1.layers['L4'].connect_input(self.retina)
 
         self.V1.layers['L23'].connect_input(self.V1.layers['L4'])
-        if with_motor_cortex:
-            self.V1.layers['L23'].connect_input(self.V1.layers['motor_direction'])
-            self.V1.layers['L23'].connect_input(self.V1.layers['motor_amplitude'])
+        self.V1.layers['L23'].connect_input(self.V1.layers['L4_history'])
+
+
+        self.V1.layers['L23'].connect_input(self.V1.layers['motor_direction'])
+        self.V1.layers['L23'].connect_input(self.V1.layers['motor_amplitude'])
 
     @staticmethod
     def display_retina(retina_image, vector):
@@ -42,9 +46,13 @@ class Cortex(object):
         self.retina.cells = retina_image
         self.V1.layers['L4'].linear_update()
         self.V1.layers['L23'].linear_update()
+        # self.V1.layers['L23'].integrate()
 
         self.V1.layers['motor_direction'].cells = self.location_encoder.encode_phase(vector)
         self.V1.layers['motor_amplitude'].cells = self.location_encoder.encode_amplitude(vector)
+
+        self.V1.layers['L4_history'].cells = np.copy(self.V1.layers['L4'].cells)
+
 
     def associate(self, label):
         self.label_layer.encode(scalar=label)

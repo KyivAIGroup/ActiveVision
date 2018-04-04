@@ -33,15 +33,23 @@ class AssociationMemory(object):
 
 
 class Layer(object):
-    def __init__(self, name, shape):
+    def __init__(self, name, shape, sparsity=0.1):
         self.name = name
         self.cells = np.zeros(shape, dtype=np.int32)
         self.size = np.prod(shape)
         self.input_layers = []
         self.weights = []
         self.associated = {}
-        self.sparsity = 0.1
+        self.sparsity = sparsity
+        self.sparsity_weights = 0.2
         self.memory = AssociationMemory(self)
+
+        # Integration params. used only in self.integrate()
+        self.sparsity_2 = 0.07  # sparsity of the integration layer
+        self.tau = 0.3
+        self.Y = np.zeros((10, self.size))
+        self.Y_exc = np.zeros(self.size)
+        self.i = 0
 
         # association memory params
         self.cluster_size = 2
@@ -49,13 +57,23 @@ class Layer(object):
 
     def connect_input(self, new_layer):
         self.input_layers.append(new_layer)
-        self.weights.append(np.random.rand(self.size, new_layer.size))
+        # self.weights.append(np.random.rand(self.size, new_layer.size))
+        self.weights.append(np.random.binomial(1, self.sparsity_weights, size=(self.size, new_layer.size)))
+
+    def integrate(self):
+        # exeprimental feature for sequence recognition/integration
+        for layer_id, layer in enumerate(self.input_layers):
+            self.Y[self.i] += np.dot(self.weights[layer_id], layer.cells.flatten()) * (1 + self.Y_exc)
+
+        self.Y[self.i] = self.kWTA(self.Y[self.i], self.sparsity)
+        self.Y_exc += (self.Y[self.i] - self.Y_exc) * self.tau
+        self.i += 1
 
     def linear_update(self):
         signal = np.zeros(self.cells.shape, dtype=np.float32)
         for layer_id, layer in enumerate(self.input_layers):
             signal += np.dot(self.weights[layer_id], layer.cells.flatten())
-        self.cells = self.k_winners_take_all(signal)
+        self.cells = self.kWTA(signal, self.sparsity)
 
     def choose_n_active(self, n):
         active = np.where(self.cells)[0]
@@ -86,10 +104,10 @@ class Layer(object):
         activation_map = cv2.resize(activation_map, (300, 300))
         cv2.imshow(winname, activation_map)
 
-    def k_winners_take_all(self, activations):
-        n_active = max(int(self.sparsity * len(activations)), 1)
-        winners = np.argsort(activations)[-n_active:]
-        sdr = np.zeros(activations.shape, dtype=self.cells.dtype)
+    def kWTA(self, cells, sparsity):
+        n_active = max(int(sparsity * cells.size), 1)
+        winners = np.argsort(cells)[-n_active:]
+        sdr = np.zeros(cells.shape, dtype=self.cells.dtype)
         sdr[winners] = 1
         return sdr
 
