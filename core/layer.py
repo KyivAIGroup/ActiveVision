@@ -55,6 +55,10 @@ class Layer(object):
         self.cluster_size = 2
         self.clusters = 'tbd'
 
+    @property
+    def n_active(self):
+        return int(len(self.cells) * self.sparsity)
+
     def connect_input(self, new_layer):
         self.input_layers.append(new_layer)
         # self.weights.append(np.random.rand(self.size, new_layer.size))

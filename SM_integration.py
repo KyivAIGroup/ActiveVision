@@ -2,8 +2,10 @@
 # L23 integrates L4 and L5, visual feature in context of movement
 
 import cv2
+import numpy as np
 import load_mnist
 from tqdm import tqdm
+import matplotlib.pyplot as plt
 
 from core.world import World
 from core.agent import Agent
@@ -56,5 +58,39 @@ def one_image(label_interest=5):
         cv2_step()
 
 
+def learn_pairs(label_interest=5, n_jumps_test=50):
+    """
+    :param label_interest: MNIST label of interest
+    :param n_jumps_test: how many test saccades to be made for one image;
+                         as we increase `n_jumps_test`, we expect overlap with L23 train history to decrease in time,
+                         since during the training we observe only the most significant features in an image.
+                         Ideally, we'd like the overlap not to decrease much in time.
+    """
+    images, labels = load_mnist.load_images(images_number=100)
+
+    world = World()
+    poppy = Agent()
+
+    images_interest = images[labels == label_interest]
+    for image in images_interest:
+        world.add_image(image, position=(10, 10))
+        l23_train = poppy.learn_pairs(world, label_interest)
+        world.reset()
+        if n_jumps_test == 0:
+            l23_test = poppy.learn_pairs(world)
+        else:
+            l23_test = []
+            poppy.sense_data(world)
+            for saccade in range(n_jumps_test):
+                poppy.sense_data(world)
+                l23_test.append(poppy.cortex.V1.layers['L23'].cells.copy())
+            l23_test = np.vstack(l23_test)
+        overlap = np.dot(l23_train, l23_test.T)
+        overlap = (overlap * 255 / poppy.cortex.V1.layers['L23'].n_active).astype(np.uint8)
+        cv2.imshow('overlap', overlap)
+        cv2_step()
+
+
 if __name__ == '__main__':
-    one_image()
+    np.random.seed(26)
+    learn_pairs()

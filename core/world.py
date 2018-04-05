@@ -22,14 +22,18 @@ class World(object):
         x, y = position
         im_h, im_w = new_image.shape[:2]
         self.image[y: y+im_h, x: x+im_w] = new_image
+        self.reset()
+
+    def reset(self):
         self.saliency_map.init_world(self.image)
 
-    def clip_retina(self, receptive_field_pixels):
+    def clip_retina(self, receptive_field_pixels, position=None):
+        if position is None:
+            position = next(self.saliency_map)
         fov_w, fov_h = receptive_field_pixels
-        new_position = next(self.saliency_map)
-        x, y = new_position
+        x, y = position
         x = np.clip(x, a_min=fov_w // 2, a_max=self.width_px - fov_w // 2)
         y = np.clip(y, a_min=fov_h // 2, a_max=self.height_px - fov_h // 2)
-        retina_image = self.image[y-fov_h//2: y+fov_h//2, x-fov_w//2: x+fov_w//2].copy()
+        retina_image = self.image[y - fov_h // 2: y + fov_h // 2, x - fov_w // 2: x + fov_w // 2].copy()
         retina_image = apply_blur(retina_image)
         return (x, y), retina_image
