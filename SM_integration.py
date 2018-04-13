@@ -22,7 +22,7 @@ def run(world, agent, train=True, images_number=1000, order=False):
         argsort = np.argsort(labels)
         images = np.take(images, argsort, axis=0)
         labels = np.take(labels, argsort)
-    for image, label in zip(tqdm(images, desc="train={}".format(train)), labels):
+    for image, label in tqdm(zip(images, labels), desc="train={}".format(train)):
         world.add_image(image)
         for saccade in range(7):
             agent.sense_data(world)

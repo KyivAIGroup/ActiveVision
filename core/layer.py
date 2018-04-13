@@ -28,10 +28,8 @@ class AssociationMemory(object):
     def recall(self, layer_from, layer_to):
         history = np.array(self.patterns[layer_from])
         overlap = history.dot(layer_from.cells)
-        largest_overlap_patterns = np.take(self.patterns[layer_to], np.where(overlap == np.max(overlap))[0])
-        unique, counts = np.unique(largest_overlap_patterns, return_counts=True)
-        pattern = unique[np.argmax(counts)]
-        return pattern
+        winner = np.argmax(overlap)
+        return self.patterns[layer_to][winner]
 
 
 class Layer(object):
@@ -82,11 +80,18 @@ class Layer(object):
         self.Y_exc += (self.Y[self.i] - self.Y_exc) * self.tau
         self.i += 1
 
+    def linear_update_intersection(self):
+        signal = np.ones(self.shape, dtype=bool)
+        for layer_id, layer in enumerate(self.input_layers):
+            signal &= np.dot(self.weights[layer_id], layer.cells.flatten()).astype(bool)
+        self.cells = self.kWTA(signal, self.sparsity)
+
     def linear_update(self):
         signal = np.zeros(self.cells.shape, dtype=np.float32)
         for layer_id, layer in enumerate(self.input_layers):
             signal += np.dot(self.weights[layer_id], layer.cells.flatten())
         self.cells = self.kWTA(signal, self.sparsity)
+        # active_ids = np.where(self.cells)[0]
         # for input_weights in self.weights:
         #     input_weights[active_ids, :] = input_weights[active_ids, :] + 1
 
@@ -99,7 +104,7 @@ class Layer(object):
 
     def random_activation(self):
         active = np.random.choice(self.size, size=self.get_sparse_bits_count(), replace=False)
-        sdr = np.zeros(self.cells.shape, dtype=self.cells.dtype)
+        sdr = np.zeros(self.shape, dtype=self.cells.dtype)
         sdr.ravel()[active] = 1
         self.cells = sdr
 

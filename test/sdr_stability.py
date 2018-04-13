@@ -53,7 +53,7 @@ def test_translate_plot(max_dist=5, layer='L4'):
                 overlaps[dist] += overlap
             counts[dist] += len(images)
     overlaps /= counts
-    plt.plot(np.arange(len(overlaps)), overlaps, label="retina {}".format(cortex.retina.cells.shape))
+    plt.plot(np.arange(len(overlaps)), overlaps, label="retina {}".format(cortex.retina.shape))
     plt.xlabel("Translation distance, px")
     plt.ylabel("Overlap with origin image")
     plt.title("{} SDR stability test: image translation".format(layer))
