@@ -34,7 +34,7 @@ label_interest = 0
 zeros = images[labels == label_interest]
 zero1 = zeros[1]
 
-world.add_image(zero1, position=(10, 10))
+world.add_image(zero1)
 
 num_of_fixations = np.shape(world.saliency_map.corners_xy)[0]
 

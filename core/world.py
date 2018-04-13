@@ -2,6 +2,7 @@ import numpy as np
 
 from core.layer import SaliencyMap
 from utils import apply_blur
+from constants import IMAGE_SHIFT, WORLD_CENTER
 
 
 class LabeledImage(object):
@@ -11,15 +12,16 @@ class LabeledImage(object):
 
 
 class World(object):
+
     def __init__(self):
         self.width_px = 100
         self.height_px = 100
         self.image = np.zeros((self.height_px, self.width_px), dtype=np.uint8)
         self.saliency_map = SaliencyMap()
 
-    def add_image(self, new_image, position):
+    def add_image(self, new_image):
         # new_image is a two dimensional array
-        x, y = position
+        x, y = IMAGE_SHIFT
         im_h, im_w = new_image.shape[:2]
         self.image[y: y+im_h, x: x+im_w] = new_image
         self.reset()
@@ -36,4 +38,5 @@ class World(object):
         y = np.clip(y, a_min=fov_h // 2, a_max=self.height_px - fov_h // 2)
         retina_image = self.image[y - fov_h // 2: y + fov_h // 2, x - fov_w // 2: x + fov_w // 2].copy()
         retina_image = apply_blur(retina_image)
-        return (x, y), retina_image
+        position_relative_to_center = np.subtract((x, y), WORLD_CENTER)
+        return position_relative_to_center, retina_image

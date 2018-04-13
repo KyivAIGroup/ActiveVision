@@ -38,7 +38,6 @@ class Layer(object):
     def __init__(self, name, shape, sparsity=0.1):
         self.name = name
         self.cells = np.zeros(shape, dtype=np.int32)
-        self.size = np.prod(shape)
         self.input_layers = []
         self.weights = []
         self.associated = {}
@@ -58,8 +57,16 @@ class Layer(object):
         self.clusters = 'tbd'
 
     @property
+    def shape(self):
+        return self.cells.shape
+
+    @property
+    def size(self):
+        return np.prod(self.shape)
+
+    @property
     def n_active(self):
-        return int(len(self.cells) * self.sparsity)
+        return max(1, int(self.size * self.sparsity))
 
     def connect_input(self, new_layer):
         self.input_layers.append(new_layer)

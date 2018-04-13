@@ -19,7 +19,6 @@ class ScalarEncoder(object):
         :param bins: number of bins (1/resolution)
         :param similarity: how similar two adjacent encodings (bins)
         """
-        self.size = size
         self.sparsity = sparsity
         self.bins = bins
         self.similarity = similarity
@@ -30,27 +29,27 @@ class ScalarEncoder(object):
         self.data_path = "size={}_sparse={}_bins={}_similar={}.npy".format(size, sparsity, bins, similarity)
         self.data_path = os.path.join(data_dir, self.data_path)
         if not os.path.exists(self.data_path):
-            self.generate_sdr()
+            self.generate_sdr(size)
         self.sdr = np.load(self.data_path)
 
-    def generate_sdr(self):
-        self.sdr = np.zeros((self.bins+1, self.size), dtype=bool)  # 1 more bin to handle upper value 1.0
-        n_active_total = max(int(self.size * self.sparsity), 1)
+    def generate_sdr(self, size):
+        sdr = np.zeros((self.bins+1, size), dtype=bool)  # 1 more bin to handle upper value 1.0
+        n_active_total = max(int(size * self.sparsity), 1)
         n_active_stay = int(n_active_total * self.similarity)
         n_active_new = n_active_total - n_active_stay
-        mask_active = np.random.choice(self.size, size=n_active_total, replace=False)
-        self.sdr[0][mask_active] = 1
-        dim_arange = np.arange(self.size)
-        for bin_id in trange(1, len(self.sdr), desc="Generating {} SDR bins".format(type(self).__name__)):
-            active_prev = np.nonzero(self.sdr[bin_id - 1])[0]
+        mask_active = np.random.choice(size, size=n_active_total, replace=False)
+        sdr[0][mask_active] = 1
+        dim_arange = np.arange(size)
+        for bin_id in trange(1, len(sdr), desc="Generating {} SDR bins".format(type(self).__name__)):
+            active_prev = np.nonzero(sdr[bin_id - 1])[0]
             active_stay = np.random.choice(active_prev, size=n_active_stay, replace=False)
             non_active = np.delete(dim_arange, active_prev)
             active_new = np.random.choice(non_active, size=n_active_new, replace=False)
-            self.sdr[bin_id][active_stay] = 1
-            self.sdr[bin_id][active_new] = 1
-        for sdr_bin in self.sdr:
+            sdr[bin_id][active_stay] = 1
+            sdr[bin_id][active_new] = 1
+        for sdr_bin in sdr:
             assert len(np.nonzero(sdr_bin)[0]) == n_active_total
-        np.save(self.data_path, self.sdr)
+        np.save(self.data_path, sdr)
 
     def _to_bin(self, scalar):
         """
@@ -124,13 +123,14 @@ class IntEncoder(ScalarEncoder):
 class LocationEncoder(object):
     def __init__(self, max_amplitude, shape):
         self.max_amplitude = float(max_amplitude)
-        self.scalar_encoder = FloatEncoder(size=shape, sparsity=0.1, bins=100, similarity=0.8)
+        self.phase_encoder = FloatEncoder(size=shape, sparsity=0.1, bins=10, similarity=0.5)
+        self.amplitude_encoder = FloatEncoder(size=shape, sparsity=0.1, bins=4, similarity=0.5)
         # self.scalar_encoder = RandomDistributedScalarEncoder(resolution=0.01, w=11, n=100)
 
     def encode_amplitude(self, vector):
         ampl = np.linalg.norm(vector)
         ampl = ampl / self.max_amplitude
-        ampl_encoded = self.scalar_encoder.encode(ampl)
+        ampl_encoded = self.amplitude_encoder.encode(ampl)
         return ampl_encoded
 
     def encode_phase(self, vector):
@@ -138,7 +138,7 @@ class LocationEncoder(object):
         phase = np.arctan2(y, x)
         # transform [-pi, pi] --> [0, 1]
         phase = (phase / np.pi + 1.) / 2.
-        phase_encoded = self.scalar_encoder.encode(phase)
+        phase_encoded = self.phase_encoder.encode(phase)
         return phase_encoded
 
 

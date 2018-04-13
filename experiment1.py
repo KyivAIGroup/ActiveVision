@@ -29,7 +29,7 @@ zero1 = zeros[1]
 # plt.imshow(zero1)
 # plt.show()
 
-world.add_image(zero1, position=(10, 10))
+world.add_image(zero1)
 poppy.init_world(world)
 
 # poppy.saliency_map.display()

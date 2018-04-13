@@ -23,7 +23,7 @@ def run(world, agent, train=True, images_number=1000, order=False):
         images = np.take(images, argsort, axis=0)
         labels = np.take(labels, argsort)
     for image, label in zip(tqdm(images, desc="train={}".format(train)), labels):
-        world.add_image(image, position=(10, 10))
+        world.add_image(image)
         for saccade in range(7):
             agent.sense_data(world)
             if train:
@@ -50,7 +50,7 @@ def one_image(label_interest=5):
     poppy = Agent()
 
     image_interest = images[labels == label_interest][0]
-    world.add_image(image_interest, position=(10, 10))
+    world.add_image(image_interest)
 
     while True:
         poppy.sense_data(world)
@@ -74,7 +74,7 @@ def learn_pairs(label_interest=5, n_jumps_test=50):
 
     images_interest = images[labels == label_interest]
     for image in images_interest:
-        world.add_image(image, position=(10, 10))
+        world.add_image(image)
         l23_train = poppy.learn_pairs(world, label_interest)
         world.reset()
         if n_jumps_test == 0:
