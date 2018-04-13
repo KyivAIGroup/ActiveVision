@@ -124,13 +124,14 @@ class IntEncoder(ScalarEncoder):
 class LocationEncoder(object):
     def __init__(self, max_amplitude, shape):
         self.max_amplitude = float(max_amplitude)
-        self.scalar_encoder = FloatEncoder(size=shape, sparsity=0.1, bins=100, similarity=0.8)
+        self.phase_encoder = FloatEncoder(size=shape, sparsity=0.1, bins=10, similarity=0.5)
+        self.amplitude_encoder = FloatEncoder(size=shape, sparsity=0.1, bins=4, similarity=0.5)
         # self.scalar_encoder = RandomDistributedScalarEncoder(resolution=0.01, w=11, n=100)
 
     def encode_amplitude(self, vector):
         ampl = np.linalg.norm(vector)
         ampl = ampl / self.max_amplitude
-        ampl_encoded = self.scalar_encoder.encode(ampl)
+        ampl_encoded = self.amplitude_encoder.encode(ampl)
         return ampl_encoded
 
     def encode_phase(self, vector):
@@ -138,7 +139,7 @@ class LocationEncoder(object):
         phase = np.arctan2(y, x)
         # transform [-pi, pi] --> [0, 1]
         phase = (phase / np.pi + 1.) / 2.
-        phase_encoded = self.scalar_encoder.encode(phase)
+        phase_encoded = self.phase_encoder.encode(phase)
         return phase_encoded
 
 

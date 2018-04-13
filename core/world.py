@@ -35,5 +35,5 @@ class World(object):
         x = np.clip(x, a_min=fov_w // 2, a_max=self.width_px - fov_w // 2)
         y = np.clip(y, a_min=fov_h // 2, a_max=self.height_px - fov_h // 2)
         retina_image = self.image[y - fov_h // 2: y + fov_h // 2, x - fov_w // 2: x + fov_w // 2].copy()
-        retina_image = apply_blur(retina_image)
+        # retina_image = apply_blur(retina_image)
         return (x, y), retina_image

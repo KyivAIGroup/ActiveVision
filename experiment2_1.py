@@ -2,6 +2,8 @@
 # and for new entry look at memory for match:
 # part 1: for different order of fixation of the same digit
 
+# here I will try to apply learning
+
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -42,12 +44,34 @@ world.add_image(zero1, position=(10, 10))
 num_of_fixations = np.shape(world.saliency_map.corners_xy)[0]
 print(num_of_fixations)
 
-initial_pairs = get_l23_history(n_jumps=30)   # array for storing pattern pairs encoding
-new_pairs = get_l23_history(n_jumps=7)
-max_overlap = np.count_nonzero(new_pairs[0])
+def encode():
+    n_jumps = 16
+    fixations = np.random.choice(num_of_fixations, size=n_jumps+1, replace=True)
+    is_moved = np.r_[True, np.diff(fixations) != 0]
+    fixations = fixations[is_moved]
+    print(fixations)
 
-overlap = np.dot(initial_pairs, new_pairs.T)
-print(overlap)
+    l23_history = []  # array for storing pattern pairs encoding
+    for i, f in enumerate(fixations):
+        poppy.sense_data(world, position=world.saliency_map.corners_xy[f])
+        # poppy.cortex.V1.layers['L23'].Y_exc *= 0
+        # if i == n_jumps / 2:
+        #     poppy.cortex.V1.layers['L23'].Y_exc *= 0
+        l23_history.append(poppy.cortex.V1.layers['L23'].cells)
+    l23_history.pop(0)  # remove first jump from nowhere
+    l23_history = np.vstack(l23_history)
+    # print(np.dot(l23_history, l23_history.T))
+    return l23_history[-1]
+
+
+print(encode())
+
+
+# print(np.count_nonzero(l23_history, axis=1))
+# print(l23_history)
+# print(np.dot(l23_history, l23_history.T))
+# overlap = np.dot(initial_pairs, new_pairs.T)
+# print(overlap)
 # print np.sum(overlap)
-plt.imshow(overlap, vmin=0, vmax=max_overlap)
-plt.show()
+# plt.imshow(overlap, vmin=0, vmax=max_overlap)
+# plt.show()

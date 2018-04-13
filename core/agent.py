@@ -19,9 +19,11 @@ class Agent(object):
     def sense_data(self, world, position=None):
         new_position_xy, retina_image = world.clip_retina(self.receptive_field_pixels, position)
         self.position[:2] = new_position_xy
-        vector_move = self.position - self.last_position
-        self.last_position = np.copy(self.position)
-        self.cortex.compute(retina_image, vector_move, display=True)
+        # vector_move = self.position - self.last_position
+        # self.last_position = np.copy(self.position)
+        image_center = (24, 24)
+        vector_move = self.position[:2] - image_center
+        self.cortex.compute(retina_image, vector_move, learning=False)
 
     def learn_pairs(self, world, label=None):
         l23_history = []

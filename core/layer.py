@@ -46,10 +46,9 @@ class Layer(object):
 
         # Integration params. used only in self.integrate()
         self.sparsity_2 = 0.07  # sparsity of the integration layer
-        self.tau = 0.3
-        self.Y = np.zeros((10, self.size))
+        self.tau = 0.1
+        self.Y = np.zeros(self.size)
         self.Y_exc = np.zeros(self.size)
-        self.i = 0
 
         # association memory params
         self.cluster_size = 2
@@ -64,14 +63,33 @@ class Layer(object):
         # self.weights.append(np.random.rand(self.size, new_layer.size))
         self.weights.append(np.random.binomial(1, self.sparsity_weights, size=(self.size, new_layer.size)))
 
-    def integrate(self):
+    def change_sparsity(self, vector, new_sparsity):
+        return_vector = np.copy(vector)
+        current_ones = np.count_nonzero(vector)
+        current_sparsity = np.count_nonzero(vector) / float(vector.size)
+        num_to_replace = (current_sparsity - new_sparsity) * vector.size
+        if num_to_replace > 0:
+            # we delete ones
+            inds = np.random.choice(np.nonzero(vector)[0], size=int(num_to_replace), replace=False)
+            return_vector[inds] = 0
+        else:
+            inds = np.random.choice(np.nonzero(vector - 1)[0], size=int(np.abs(num_to_replace)), replace=False)
+            return_vector[inds] = 1
+
+        return return_vector
+
+    def integrate(self, learning=False):
         # exeprimental feature for sequence recognition/integration
         for layer_id, layer in enumerate(self.input_layers):
-            self.Y[self.i] += np.dot(self.weights[layer_id], layer.cells.flatten()) * (1 + self.Y_exc)
+            self.cells = self.cells + np.dot(self.weights[layer_id], layer.cells.flatten()) * (1 + self.Y_exc)
 
-        self.Y[self.i] = self.kWTA(self.Y[self.i], self.sparsity)
-        self.Y_exc += (self.Y[self.i] - self.Y_exc) * self.tau
-        self.i += 1
+        self.cells = self.kWTA(self.cells, self.sparsity)
+        self.Y_exc += (self.cells - self.Y_exc) * self.tau
+        p = 0.04  # like probability of changing connections. I do not want to change all connections
+        if learning:
+            self.weights[0] = (self.weights[0] + np.outer(self.change_sparsity(self.cells, p),
+                                                      self.change_sparsity(self.input_layers[0].cells, p))) > 0
+
 
     def linear_update(self):
         signal = np.zeros(self.cells.shape, dtype=np.float32)
@@ -162,12 +180,20 @@ class SaliencyMap(object):
                                                   qualityLevel=0.05, minDistance=min_dist)
         self.corners_xy = np.squeeze(self.corners_xy, axis=1).astype(np.int32)
 
-    def display(self):
+    def display(self, show_cv=True):
         image_with_corners = cv2.cvtColor(self.image_input, cv2.COLOR_GRAY2BGR)
-        for x, y in self.corners_xy:
+        for i, (x, y) in enumerate(self.corners_xy):
             cv2.circle(image_with_corners, (x, y), radius=1, color=(255, 0, 0), thickness=-1)
+            cv2.putText(image_with_corners, str(i),
+                        (x, y),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.25,
+                        (255, 0, 0),
+                        1)
         image_with_corners = cv2.resize(image_with_corners, (700, 700))
-        cv2.imshow("Corners", image_with_corners)
+        if show_cv:
+            cv2.imshow("Corners", image_with_corners)
+        return image_with_corners
 
     def __iter__(self):
         return self
