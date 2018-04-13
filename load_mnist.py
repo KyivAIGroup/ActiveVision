@@ -5,12 +5,14 @@ import pickle
 
 from constants import DATA_DIR
 
+__version__ = '0.1'
+
 
 def _get_saved_path(images_number, train, data_dir):
     fold = "train" if train else "test"
     if images_number is None:
         images_number = 'all'
-    fpath = os.path.join(data_dir, "digits_{}_{}.pkl".format(fold, images_number))
+    fpath = os.path.join(data_dir, "MNIST", "v{}".format(__version__), fold, "{}.pkl".format(images_number))
     return fpath
 
 
@@ -26,7 +28,7 @@ def _download_images(images_number, train, file_path):
         images = images[:images_number]
         labels = labels[:images_number]
     images = images.astype(np.uint8)
-    labels = labels.astype(np.int32)
+    labels = labels.astype(int)
     data_dir = os.path.dirname(file_path)
     if not os.path.exists(data_dir):
         os.makedirs(data_dir)

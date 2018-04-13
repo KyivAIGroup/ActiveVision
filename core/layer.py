@@ -28,8 +28,10 @@ class AssociationMemory(object):
     def recall(self, layer_from, layer_to):
         history = np.array(self.patterns[layer_from])
         overlap = history.dot(layer_from.cells)
-        winner = np.argmax(overlap)
-        return self.patterns[layer_to][winner]
+        largest_overlap_patterns = np.take(self.patterns[layer_to], np.where(overlap == np.max(overlap))[0])
+        unique, counts = np.unique(largest_overlap_patterns, return_counts=True)
+        pattern = unique[np.argmax(counts)]
+        return pattern
 
 
 class Layer(object):
@@ -78,6 +80,8 @@ class Layer(object):
         for layer_id, layer in enumerate(self.input_layers):
             signal += np.dot(self.weights[layer_id], layer.cells.flatten())
         self.cells = self.kWTA(signal, self.sparsity)
+        # for input_weights in self.weights:
+        #     input_weights[active_ids, :] = input_weights[active_ids, :] + 1
 
     def choose_n_active(self, n):
         active = np.where(self.cells)[0]

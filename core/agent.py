@@ -16,12 +16,12 @@ class Agent(object):
         self.last_position = np.copy(self.position)
         self.receptive_field_pixels = (2 * self.position[2] * np.tan(np.deg2rad(self.receptive_field_angle_xy))).astype(int)
 
-    def sense_data(self, world, position=None):
+    def sense_data(self, world, position=None, display=False):
         new_position_xy, retina_image = world.clip_retina(self.receptive_field_pixels, position)
         self.position[:2] = new_position_xy
         vector_move = self.position - self.last_position
         self.last_position = np.copy(self.position)
-        self.cortex.compute(retina_image, vector_move, display=True)
+        self.cortex.compute(retina_image, vector_move, display=display)
 
     def learn_pairs(self, world, label=None):
         l23_history = []

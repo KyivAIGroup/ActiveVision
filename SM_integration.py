@@ -14,22 +14,23 @@ from utils import cv2_step
 # todo: 17.12.17 Add activation based on clusters 2. Think how to generate second output for classification
 
 
-def run(world, agent, train=True, images_number=1000):
+def run(world, agent, train=True, images_number=1000, order=False):
     images, labels = load_mnist.load_images(images_number, train)
     correct = 0
-    total = 0
-    for digit in (5, 6):
-        images_digit = images[labels == digit]
-        total += len(images_digit)
-        for im in tqdm(images_digit, "Processing digit={}, learn={}".format(digit, train)):
-            world.add_image(im, position=(10, 10))
-            for saccade in range(7):
-                agent.sense_data(world)
-                if train:
-                    agent.cortex.associate(digit)
-            if not train:
-                label_predicted = agent.cortex.predict()
-                correct += label_predicted == digit
+    total = len(labels)
+    if order:
+        argsort = np.argsort(labels)
+        images = np.take(images, argsort, axis=0)
+        labels = np.take(labels, argsort)
+    for image, label in zip(tqdm(images, desc="train={}".format(train)), labels):
+        world.add_image(image, position=(10, 10))
+        for saccade in range(7):
+            agent.sense_data(world)
+            if train:
+                agent.cortex.associate(label)
+        if not train:
+            label_predicted = agent.cortex.predict()
+            correct += label_predicted == label
     if not train:
         accuracy = float(correct) / total
         print("Accuracy: {}".format(accuracy))
@@ -93,4 +94,5 @@ def learn_pairs(label_interest=5, n_jumps_test=50):
 
 if __name__ == '__main__':
     np.random.seed(26)
-    learn_pairs()
+    # learn_pairs()
+    train_test()
