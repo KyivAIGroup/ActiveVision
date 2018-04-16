@@ -80,17 +80,18 @@ class Layer(object):
         self.Y_exc += (self.Y[self.i] - self.Y_exc) * self.tau
         self.i += 1
 
-    def linear_update_intersection(self):
-        signal = np.ones(self.shape, dtype=bool)
-        for layer_id, layer in enumerate(self.input_layers):
-            signal &= np.dot(self.weights[layer_id], layer.cells.flatten()).astype(bool)
-        self.cells = self.kWTA(signal, self.sparsity)
-
-    def linear_update(self):
-        signal = np.zeros(self.cells.shape, dtype=np.float32)
-        for layer_id, layer in enumerate(self.input_layers):
+    def linear_update(self, input_layers=None, sparsity=None, intersection=False):
+        if input_layers is None:
+            input_layers = self.input_layers
+        if sparsity is None:
+            sparsity = self.sparsity
+        signal = np.zeros(self.cells.shape, dtype=np.int32)
+        for layer in input_layers:
+            layer_id = self.input_layers.index(layer)
             signal += np.dot(self.weights[layer_id], layer.cells.flatten())
-        self.cells = self.kWTA(signal, self.sparsity)
+        if intersection:
+            signal &= self.cells
+        self.cells = self.kWTA(signal, sparsity)
         # active_ids = np.where(self.cells)[0]
         # for input_weights in self.weights:
         #     input_weights[active_ids, :] = input_weights[active_ids, :] + 1
@@ -124,10 +125,11 @@ class Layer(object):
         activation_map = cv2.resize(activation_map, (300, 300))
         cv2.imshow(winname, activation_map)
 
-    def kWTA(self, cells, sparsity):
+    @staticmethod
+    def kWTA(cells, sparsity):
         n_active = max(int(sparsity * cells.size), 1)
         winners = np.argsort(cells)[-n_active:]
-        sdr = np.zeros(cells.shape, dtype=self.cells.dtype)
+        sdr = np.zeros(cells.shape, dtype=cells.dtype)
         sdr[winners] = 1
         return sdr
 

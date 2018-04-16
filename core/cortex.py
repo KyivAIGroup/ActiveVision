@@ -46,7 +46,12 @@ class Cortex(object):
         self.V1.layers['motor_direction'].cells = self.location_encoder.encode_phase(vector)
         self.V1.layers['motor_amplitude'].cells = self.location_encoder.encode_amplitude(vector)
 
-        self.V1.layers['L23'].linear_update()
+        l4_intersection = False
+        if l4_intersection:
+            self.V1.layers['L23'].linear_update(input_layers=[self.V1.layers['motor_direction'], self.V1.layers['motor_amplitude']], sparsity=0.3, intersection=False)
+            self.V1.layers['L23'].linear_update(input_layers=[self.V1.layers['L4']], sparsity=0.05, intersection=True)
+        else:
+            self.V1.layers['L23'].linear_update()
 
     def associate(self, label):
         self.label_layer.encode(scalar=label)
