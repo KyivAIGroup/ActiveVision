@@ -40,3 +40,6 @@ class World(object):
         retina_image = apply_blur(retina_image)
         position_relative_to_center = np.subtract((x, y), WORLD_CENTER)
         return position_relative_to_center, retina_image
+
+    def saccades(self):
+        return list(self.saliency_map.corners_xy)

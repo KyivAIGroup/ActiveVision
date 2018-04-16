@@ -5,7 +5,7 @@ import pickle
 
 from constants import DATA_DIR
 
-__version__ = '0.1'
+__version__ = '0.2'
 
 
 def _get_saved_path(images_number, train, data_dir):
@@ -24,6 +24,9 @@ def _download_images(images_number, train, file_path):
     else:
         images = mnist.test_images()
         labels = mnist.test_labels()
+    index_shuffled = np.random.permutation(len(labels))
+    images = np.take(images, index_shuffled, axis=0)
+    labels = np.take(labels, index_shuffled)
     if images_number is not None:
         images = images[:images_number]
         labels = labels[:images_number]
@@ -36,11 +39,12 @@ def _download_images(images_number, train, file_path):
         pickle.dump((images, labels), f)
 
 
-def load_images(images_number, train=True, data_dir=DATA_DIR):
+def load_images(images_number, train=True, data_dir=DATA_DIR, digits=range(10)):
     """
     :param images_number: int, how many to load. Pass `None` to load all images.
     :param train: bool, train or test
     :param data_dir: str, directory to store cached pickled files
+    :param digits: digits to take
     :return: MNIST images, labels
     """
     fpath = _get_saved_path(images_number, train, data_dir)
@@ -48,4 +52,7 @@ def load_images(images_number, train=True, data_dir=DATA_DIR):
         _download_images(images_number, train, fpath)
     with open(fpath, 'rb') as f:
         images, labels = pickle.load(f)
+    digits_present_mask = np.isin(labels, list(digits))
+    images = images[digits_present_mask]
+    labels = labels[digits_present_mask]
     return images, labels

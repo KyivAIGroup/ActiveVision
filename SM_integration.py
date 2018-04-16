@@ -14,18 +14,14 @@ from utils import cv2_step
 # todo: 17.12.17 Add activation based on clusters 2. Think how to generate second output for classification
 
 
-def run(world, agent, train=True, images_number=1000, order=False):
-    images, labels = load_mnist.load_images(images_number, train)
+def run(world, agent, train=True, images_number=1000, digits=(5, 6)):
+    images, labels = load_mnist.load_images(images_number, train=train, digits=digits)
     correct = 0
     total = len(labels)
-    if order:
-        argsort = np.argsort(labels)
-        images = np.take(images, argsort, axis=0)
-        labels = np.take(labels, argsort)
     for image, label in tqdm(zip(images, labels), desc="train={}".format(train)):
         world.add_image(image)
-        for saccade in range(7):
-            agent.sense_data(world)
+        for corner_xy in world.saccades():
+            agent.sense_data(world, position=corner_xy)
             if train:
                 agent.cortex.associate(label)
         if not train:
