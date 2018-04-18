@@ -20,11 +20,15 @@ def run(world, agent, train=True, images_number=1000, digits=(5, 6)):
     total = len(labels)
     for image, label in tqdm(zip(images, labels), desc="train={}".format(train)):
         world.add_image(image)
-        for corner_xy in world.saccades():
-            agent.sense_data(world, position=corner_xy)
-            if train:
-                agent.cortex.associate(label)
-        if not train:
+        agent.cortex.reset_activations()
+        if train:
+            # agent.learn_pairs(world, label=label)
+            for corner_xy in world.saccades():
+                agent.sense_data(world, position=corner_xy)
+            agent.cortex.associate(label)
+        else:
+            for corner_xy in world.saccades():
+                agent.sense_data(world, position=corner_xy)
             label_predicted = agent.cortex.predict()
             correct += label_predicted == label
     if not train:
@@ -32,9 +36,10 @@ def run(world, agent, train=True, images_number=1000, digits=(5, 6)):
         print("Accuracy: {}".format(accuracy))
 
 
-def train_test():
+def train_test(display=True):
     world = World()
     poppy = Agent()
+    poppy.cortex.display = display
     run(world, poppy, train=True)
     run(world, poppy, train=False)
 
@@ -47,6 +52,7 @@ def one_image(label_interest=5):
 
     image_interest = images[labels == label_interest][0]
     world.add_image(image_interest)
+    poppy.cortex.reset_activations()
 
     while True:
         poppy.sense_data(world)
@@ -71,6 +77,7 @@ def learn_pairs(label_interest=5, n_jumps_test=50):
     images_interest = images[labels == label_interest]
     for image in images_interest:
         world.add_image(image)
+        poppy.cortex.reset_activations()
         l23_train = poppy.learn_pairs(world, label_interest)
         world.reset()
         if n_jumps_test == 0:

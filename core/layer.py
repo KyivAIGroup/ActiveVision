@@ -2,6 +2,7 @@ import numpy as np
 import cv2
 
 from core.encoder import IntEncoder
+from constants import IMAGE_SIZE
 
 
 class Area(object):
@@ -23,11 +24,11 @@ class AssociationMemory(object):
         if layer_paired not in self.patterns:
             self.patterns[layer_paired] = []
         for connected_layer, activations in self.patterns.items():
-            activations.append(connected_layer.cells.copy())
+            activations.append(connected_layer.cells.flatten())
 
     def recall(self, layer_from, layer_to):
         history = np.array(self.patterns[layer_from])
-        overlap = history.dot(layer_from.cells)
+        overlap = history.dot(layer_from.cells.flatten())
         winner = np.argmax(overlap)
         return self.patterns[layer_to][winner]
 
@@ -118,19 +119,26 @@ class Layer(object):
     def display(self, winname=None):
         if winname is None:
             winname = self.name
-        map_size = int(np.ceil(np.sqrt(self.size)))
-        activation_map = np.zeros((map_size, map_size), dtype=np.uint8)
-        v = activation_map.ravel()
-        v[:self.size] = self.cells * 255
-        activation_map = cv2.resize(activation_map, (300, 300))
-        cv2.imshow(winname, activation_map)
+        activations = self.cells
+        if activations.ndim == 1:
+            side_size = int(np.ceil(np.sqrt(self.size)))
+            activations = np.r_[activations, np.zeros(side_size ** 2 - len(activations), dtype=activations.dtype)]
+            activations.resize(side_size, side_size)
+        else:
+            assert activations.ndim == 2
+        max_element = max(activations.max(), 1)
+        activations = activations / float(max_element) * 255
+        activations = cv2.resize(activations, (300, 300)).astype(np.uint8)
+        cv2.imshow(winname, activations)
 
     @staticmethod
     def kWTA(cells, sparsity):
         n_active = max(int(sparsity * cells.size), 1)
-        winners = np.argsort(cells)[-n_active:]
-        sdr = np.zeros(cells.shape, dtype=cells.dtype)
+        n_active = min(n_active, len(cells.nonzero()[0]))
+        winners = np.argsort(cells.flatten())[-n_active:]
+        sdr = np.zeros(cells.size, dtype=cells.dtype)
         sdr[winners] = 1
+        sdr = sdr.reshape(cells.shape)
         return sdr
 
 
@@ -206,3 +214,37 @@ class SaliencyMap(object):
             self.compute()
             self.curr_id = 0
         return self.corners_xy[self.curr_id]
+
+
+class LocationAwareLayer(Layer):
+
+    def __init__(self, name, canvas_shape, patch_shape, sparsity=0.1):
+        assert len(canvas_shape) == len(patch_shape) == 2
+        super(LocationAwareLayer, self).__init__(name=name, shape=canvas_shape, sparsity=sparsity)
+        self.patch_shape = np.array(patch_shape, dtype=int)
+        self.canvas_shape = np.array(canvas_shape, dtype=int)
+
+    def connect_input(self, new_layer):
+        self.input_layers.append(new_layer)
+        self.weights.append(np.random.binomial(1, self.sparsity_weights, size=(self.patch_shape.prod(), new_layer.size)))
+
+    def get_patch_position(self, vector_move):
+        vector_normed = np.divide(vector_move, np.array(IMAGE_SIZE, dtype=float))
+        vec_xc, vec_yc = vector_normed * (self.canvas_shape - self.patch_shape) / 2
+        position_patch_center = self.canvas_shape / 2. + np.array([vec_yc, vec_xc])
+        position_patch = position_patch_center - self.patch_shape / 2.
+        position_patch = position_patch.astype(int)
+        return position_patch
+
+    def linear_update_at_location(self, vector_move):
+        y0, x0 = self.get_patch_position(vector_move)
+        y1, x1 = y0 + self.patch_shape[0], x0 + self.patch_shape[1]
+        for layer_id, layer in enumerate(self.input_layers):
+            signal = np.dot(self.weights[layer_id], layer.cells.flatten())
+            signal = self.kWTA(signal, sparsity=self.sparsity)
+            signal = signal.reshape(self.patch_shape)
+            self.cells[y0: y1, x0: x1] += signal
+
+    def apply_intersection(self):
+        self.cells[self.cells <= 1] = 0  # signal at intersection is greater than 1
+        self.cells = self.kWTA(self.cells, sparsity=self.sparsity)
