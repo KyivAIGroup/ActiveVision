@@ -3,3 +3,4 @@ tqdm>=4.19.4
 mnist>=0.2.1
 matplotlib>=2.2.2
 # nupic
+# opencv3.4.1

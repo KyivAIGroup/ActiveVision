@@ -3,15 +3,11 @@
 
 import cv2
 import numpy as np
-import load_mnist
 from tqdm import tqdm
-import matplotlib.pyplot as plt
 
-from core.world import World
 from core.agent import Agent
-from utils import cv2_step
-
-# todo: 17.12.17 Add activation based on clusters 2. Think how to generate second output for classification
+from core.world import World
+from utils import cv2_step, load_mnist
 
 
 def run(world, agent, train=True, images_number=1000, digits=(5, 6)):
@@ -53,12 +49,11 @@ def one_image(label_interest=5):
     image_interest = images[labels == label_interest][0]
     world.add_image(image_interest)
     poppy.cortex.reset_activations()
+    poppy.cortex.display = True
 
     while True:
         poppy.sense_data(world)
         poppy.cortex.associate(label=label_interest)
-        # poppy.cortex.label_layer.display()
-        cv2_step()
 
 
 def learn_pairs(label_interest=5, n_jumps_test=50):
@@ -81,7 +76,7 @@ def learn_pairs(label_interest=5, n_jumps_test=50):
         l23_train = poppy.learn_pairs(world, label_interest)
         world.reset()
         if n_jumps_test == 0:
-            l23_test = poppy.learn_pairs(world)
+            l23_test = poppy.learn_pairs(world, label=label_interest)
         else:
             l23_test = []
             poppy.sense_data(world)
@@ -98,4 +93,4 @@ def learn_pairs(label_interest=5, n_jumps_test=50):
 if __name__ == '__main__':
     np.random.seed(26)
     # learn_pairs()
-    train_test()
+    one_image()

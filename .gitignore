@@ -4,10 +4,6 @@
 # cache
 *.pyc
 
-# images
-*.jpg
-*.png
-
 # data
 data/
 *.txt

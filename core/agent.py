@@ -1,8 +1,8 @@
 import numpy as np
 from itertools import permutations
 
-from core.cortex import Cortex, CortexLocationAware, CortexIntersection
-from constants import WORLD_CENTER
+from core.cortex import CortexLocationAware, CortexIntersection
+from utils.constants import WORLD_CENTER
 
 
 class Agent(object):

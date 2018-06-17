@@ -2,7 +2,7 @@ import numpy as np
 import os
 from tqdm import trange
 
-from constants import DATA_DIR
+from utils.constants import DATA_DIR
 
 try:
     from nupic.encoders.random_distributed_scalar import RandomDistributedScalarEncoder

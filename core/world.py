@@ -1,8 +1,8 @@
 import numpy as np
 
 from core.layer import SaliencyMap
-from utils import apply_blur
-from constants import IMAGE_SHIFT, WORLD_CENTER
+from utils.utils import apply_blur
+from utils.constants import IMAGE_SHIFT, WORLD_CENTER
 
 
 class LabeledImage(object):

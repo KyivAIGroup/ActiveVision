@@ -2,9 +2,9 @@ import numpy as np
 import cv2
 
 from core.layer import Area, Layer, LabelLayer, LocationAwareLayer
-from core.encoder import LocationEncoder, IntEncoder
-from constants import IMAGE_SIZE
-from utils import cv2_step
+from core.encoder import LocationEncoder
+from utils.constants import IMAGE_SIZE
+from utils.utils import cv2_step
 
 
 class Cortex(object):

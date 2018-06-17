@@ -2,7 +2,7 @@ import numpy as np
 import cv2
 
 from core.encoder import IntEncoder
-from constants import IMAGE_SIZE
+from utils.constants import IMAGE_SIZE
 
 
 class Area(object):

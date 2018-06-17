@@ -5,13 +5,14 @@
 # now it is filling the space by hypercubes. of fixed side.
 
 
+import os
+
+import cv2
 import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
-import os
-import cv2
 
-import load_mnist
+from utils import load_mnist
 
 IMAGES_NUMBER = 1000
 LAYERS_PATH = os.path.join('models_bin', 'exp9_1.npy')
@@ -51,7 +52,7 @@ def plot_threshold_impact(digits=(0, 1), hidden_size=(2000,), hidden_sparsity=0.
               include_raw_layer=include_raw_layer)
         layers = np.load(LAYERS_PATH)
         n_attractors.append(len(layers[-1]['attractors']))
-        accuracy = test()
+        accuracy = _test()
         accuracies.append(accuracy)
     n_attractors = np.hstack(n_attractors) / float(n_images)
     plt.plot(thr_linspace, n_attractors, label='# attractors, normed', marker='o')
@@ -144,7 +145,7 @@ def train(digits=(5, 6), hidden_sizes=(2000, 10000), hidden_sparsity=0.05, hidde
     np.save(LAYERS_PATH, layers)
 
 
-def test():
+def _test():
     layers = np.load(LAYERS_PATH)
     first_layer_id = 1 - layers[0]['include_raw_layer']
     l_input = layers[0]
@@ -175,4 +176,4 @@ if __name__ == '__main__':
     # train()
     # test()
     # plot_threshold_impact(digits=(5, 6))
-    plot_threshold_impact(digits=range(10), hidden_size=[], include_raw_layer=1)
+    plot_threshold_impact(digits=range(10), hidden_size=[], include_raw_layer=True)

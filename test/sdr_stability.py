@@ -1,11 +1,11 @@
 import cv2
-import numpy as np
-import load_mnist
-from tqdm import tqdm, trange
 import matplotlib.pyplot as plt
+import numpy as np
+from tqdm import tqdm, trange
 
 from core.cortex import Cortex
-from utils import cv2_step, apply_blur
+from utils.utils import cv2_step, apply_blur
+from utils import load_mnist
 
 
 def compute_translation_overlap(cortex, retina_img, translation_matrix, layer='L4', display=False):
